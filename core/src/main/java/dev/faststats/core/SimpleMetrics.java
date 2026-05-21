@@ -328,9 +328,7 @@ public abstract class SimpleMetrics implements Metrics {
         if (executor != null) try {
             info("Shutting down metrics submission");
             executor.shutdown();
-            getErrorTracker().map(SimpleErrorTracker.class::cast)
-                    .filter(SimpleErrorTracker::needsFlushing)
-                    .ifPresent(ignored -> submit());
+            submit();
         } catch (final Throwable t) {
             error("Failed to submit metrics on shutdown", t);
         } finally {
