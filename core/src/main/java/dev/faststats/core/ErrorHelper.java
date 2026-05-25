@@ -245,6 +245,6 @@ final class ErrorHelper {
                 .filter(s -> s.trim().length() > 2)
                 .filter(s -> !allowedNames.contains(s.toLowerCase(Locale.ROOT)))
                 .map(Pattern::quote)
-                .map(Pattern::compile);
+                .map(s -> Pattern.compile(s, Pattern.CASE_INSENSITIVE));
     }
 }

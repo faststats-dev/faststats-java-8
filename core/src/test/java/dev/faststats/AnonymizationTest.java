@@ -71,6 +71,15 @@ public final class AnonymizationTest {
     }
 
     @Test
+    public void usernameAnonymizationIsCaseInsensitive() {
+        final var tracker = ErrorTracker.contextUnaware();
+        final var metrics = createMetrics(tracker);
+        final var username = System.getProperty("user.name", "user");
+        tracker.trackError("Error for " + swapCase(username));
+        assertEquals("Error for [username hidden]", getErrorMessage(metrics));
+    }
+
+    @Test
     public void discordWebhookAnonymization() {
         final var tracker = ErrorTracker.contextUnaware();
         final var metrics = createMetrics(tracker);
@@ -202,5 +211,14 @@ public final class AnonymizationTest {
         final var metrics = createMetrics(tracker);
         tracker.trackError("just a normal error");
         assertEquals("just a normal error", getErrorMessage(metrics));
+    }
+
+    private static String swapCase(final String value) {
+        final var builder = new StringBuilder(value.length());
+        for (var i = 0; i < value.length(); i++) {
+            final var c = value.charAt(i);
+            builder.append(Character.isUpperCase(c) ? Character.toLowerCase(c) : Character.toUpperCase(c));
+        }
+        return builder.toString();
     }
 }
