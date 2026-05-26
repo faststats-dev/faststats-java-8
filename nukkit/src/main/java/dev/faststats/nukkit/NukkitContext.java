@@ -33,4 +33,9 @@ public final class NukkitContext extends SimpleContext {
             }
         };
     }
+
+    @Override
+    public String getProjectName() {
+        return plugin.getName();
+    }
 }

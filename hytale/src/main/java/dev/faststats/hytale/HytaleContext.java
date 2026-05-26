@@ -14,8 +14,11 @@ import org.jetbrains.annotations.Contract;
  * @since 0.24.0
  */
 public final class HytaleContext extends SimpleContext {
+    private final String pluginName;
+    
     public HytaleContext(final JavaPlugin plugin, @Token final String token) {
         super(SimpleConfig.read(plugin.getDataDirectory().toAbsolutePath().getParent().resolve("faststats").resolve("config.properties")), "hytale", token);
+        this.pluginName = plugin.getName();
     }
 
     @Override
@@ -28,5 +31,10 @@ public final class HytaleContext extends SimpleContext {
                 return new HytaleMetricsImpl(this);
             }
         };
+    }
+
+    @Override
+    public String getProjectName() {
+        return pluginName;
     }
 }

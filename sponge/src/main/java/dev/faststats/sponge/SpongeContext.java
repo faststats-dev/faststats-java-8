@@ -39,6 +39,11 @@ public final class SpongeContext extends SimpleContext {
         };
     }
 
+    @Override
+    public String getProjectName() {
+        return plugin.metadata().id();
+    }
+
     /**
      * Injectable Sponge context builder.
      *

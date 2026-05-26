@@ -20,6 +20,11 @@ public final class MockContext extends SimpleContext {
         };
     }
 
+    @Override
+    public String getProjectName() {
+        return "Mock";
+    }
+
     private record MockConfig(UUID serverId, boolean debug) implements dev.faststats.Config {
         @Override
         public boolean enabled() {

@@ -56,6 +56,9 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
         }
     }
 
+    @Contract(pure = true)
+    public abstract String getProjectName();
+
     @Override
     @Contract(pure = true)
     public final Config getConfig() {

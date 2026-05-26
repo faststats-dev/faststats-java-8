@@ -44,6 +44,11 @@ public final class VelocityContext extends SimpleContext {
         };
     }
 
+    @Override
+    public String getProjectName() {
+        return plugin.getDescription().getId();
+    }
+
     /**
      * Injectable Velocity context builder.
      *

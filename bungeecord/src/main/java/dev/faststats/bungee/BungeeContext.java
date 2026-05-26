@@ -31,4 +31,9 @@ public final class BungeeContext extends SimpleContext {
             }
         };
     }
+
+    @Override
+    public String getProjectName() {
+        return plugin.getDescription().getName();
+    }
 }

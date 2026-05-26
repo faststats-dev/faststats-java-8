@@ -38,4 +38,9 @@ public final class BukkitContext extends SimpleContext {
             return plugin.getDataFolder().getParentFile().toPath();
         }
     }
+
+    @Override
+    public String getProjectName() {
+        return plugin.getName();
+    }
 }

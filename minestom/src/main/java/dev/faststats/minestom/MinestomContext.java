@@ -3,6 +3,7 @@ package dev.faststats.minestom;
 import dev.faststats.SimpleContext;
 import dev.faststats.Token;
 import dev.faststats.config.SimpleConfig;
+import net.minestom.server.MinecraftServer;
 import org.jetbrains.annotations.Contract;
 
 import java.nio.file.Path;
@@ -21,5 +22,10 @@ public final class MinestomContext extends SimpleContext {
     @Contract(value = " -> new", pure = true)
     public MinestomMetrics.Factory metricsFactory() {
         return new MinestomMetricsImpl.Factory(this);
+    }
+
+    @Override
+    public String getProjectName() {
+        return MinecraftServer.getBrandName();
     }
 }

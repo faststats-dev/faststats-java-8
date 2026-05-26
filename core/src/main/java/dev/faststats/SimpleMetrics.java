@@ -223,6 +223,8 @@ public abstract class SimpleMetrics implements Metrics {
             }
         });
 
+
+        data.addProperty("project_name", context.getProjectName());
         data.addProperty("identifier", context.getConfig().serverId().toString());
         data.add("data", metrics);
 

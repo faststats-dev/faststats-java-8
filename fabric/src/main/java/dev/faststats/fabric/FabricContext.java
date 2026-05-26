@@ -38,4 +38,9 @@ public final class FabricContext extends SimpleContext {
             }
         };
     }
+
+    @Override
+    public String getProjectName() {
+        return mod.getMetadata().getId();
+    }
 }
