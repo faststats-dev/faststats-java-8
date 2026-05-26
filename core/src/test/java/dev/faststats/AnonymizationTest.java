@@ -1,7 +1,6 @@
 package dev.faststats;
 
 import com.google.gson.JsonObject;
-import org.jspecify.annotations.NullMarked;
 import org.junit.jupiter.api.Test;
 
 import java.util.UUID;
@@ -11,7 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@NullMarked
 public final class AnonymizationTest {
     private final MockContext context = new MockContext(UUID.randomUUID(), false);
     private final MockMetrics metrics = (MockMetrics) context.metricsFactory().create();

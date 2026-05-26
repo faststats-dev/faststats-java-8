@@ -34,7 +34,6 @@ import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@NullMarked
 public final class FeatureFlagTest {
     private static final UUID SERVER_ID = UUID.fromString("76a88a60-1329-4913-9525-fb16b588d07e");
     private static FlagServer server;

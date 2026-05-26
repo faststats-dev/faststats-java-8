@@ -1,10 +1,7 @@
 package dev.faststats;
 
-import org.jspecify.annotations.NullMarked;
-
 import java.util.UUID;
 
-@NullMarked
 public final class MockContext extends SimpleContext {
     public MockContext(final UUID serverId, final boolean debug) throws IllegalArgumentException {
         super(new MockConfig(serverId, debug), "core:test", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
