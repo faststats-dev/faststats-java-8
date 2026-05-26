@@ -78,7 +78,7 @@ public sealed interface FastStatsContext permits SimpleContext {
      * @see ErrorTracker#trackError(Throwable)
      * @since 0.24.0
      */
-    @Contract(value = " -> new")
+    @Contract(value = " -> new", pure = true)
     ErrorTracker unawareErrorTracker();
 
     // todo: add docs

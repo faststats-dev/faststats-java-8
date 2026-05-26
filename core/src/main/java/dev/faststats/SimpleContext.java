@@ -12,7 +12,6 @@ import java.util.WeakHashMap;
 
 @ApiStatus.Internal
 public non-sealed abstract class SimpleContext implements FastStatsContext {
-    private final Set<ErrorTracker> errorTrackers = Collections.newSetFromMap(new WeakHashMap<>()); // todo: a set of weak references to error trackers; must also be thread safe
     private final Config config;
     private final @Token String token;
     private final SdkInfo sdkInfo;
@@ -82,25 +81,18 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
     public final ErrorTracker awareErrorTracker() {
         final var tracker = new SimpleErrorTracker(this);
         tracker.attachErrorContext(ErrorTracker.class.getClassLoader());
-        errorTrackers.add(tracker);
         return tracker;
     }
 
     @Override
-    @Contract(value = " -> new")
+    @Contract(value = " -> new", pure = true)
     public final ErrorTracker unawareErrorTracker() {
-        final var tracker = new SimpleErrorTracker(this);
-        errorTrackers.add(tracker);
-        return tracker;
+        return new SimpleErrorTracker(this);
     }
 
     @Override
     @Contract(pure = true)
     public SdkInfo getSdkInfo() {
         return sdkInfo;
-    }
-    
-    public Set<ErrorTracker> errorTrackers() {
-        return errorTrackers;
     }
 }
