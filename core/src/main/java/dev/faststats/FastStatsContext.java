@@ -81,7 +81,12 @@ public sealed interface FastStatsContext permits SimpleContext {
     @Contract(value = " -> new", pure = true)
     ErrorTracker unawareErrorTracker();
 
-    // todo: add docs
+    /**
+     * Get the SDK information shared by services created from this context.
+     *
+     * @return the shared SDK information
+     * @since 0.24.0
+     */
     @Contract(pure = true)
     SdkInfo getSdkInfo();
 }
