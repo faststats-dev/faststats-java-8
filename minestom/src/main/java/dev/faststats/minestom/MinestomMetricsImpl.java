@@ -34,7 +34,7 @@ final class MinestomMetricsImpl extends SimpleMetrics implements MinestomMetrics
 
     @Override
     public void ready() {
-        context.errorTrackers().forEach(this::registerExceptionHandler);
+        // context.errorTrackers().forEach(this::registerExceptionHandler); // fixme
     }
 
     private void registerExceptionHandler(final ErrorTracker errorTracker) {

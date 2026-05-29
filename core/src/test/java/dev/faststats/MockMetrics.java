@@ -14,6 +14,10 @@ final class MockMetrics extends SimpleMetrics {
         return true;
     }
 
+    void startTestSubmitting() {
+        startSubmitting();
+    }
+
     @Override
     public JsonObject createData() {
         return super.createData();

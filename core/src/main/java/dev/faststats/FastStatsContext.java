@@ -2,6 +2,8 @@ package dev.faststats;
 
 import org.jetbrains.annotations.Contract;
 
+import java.util.Optional;
+
 /**
  * Shared FastStats context.
  * <p>
@@ -49,37 +51,17 @@ public sealed interface FastStatsContext permits SimpleContext {
     FeatureFlagService.Factory featureFlagServiceFactory();
 
     /**
-     * Create and attach a new context-aware error tracker.
-     * <p>
-     * This tracker will automatically track errors that occur in the same class loader as the tracker itself.
-     * <p>
-     * You can still manually track errors using {@code #trackError}.
+     * Get the registered internal/global error tracker, if one was configured.
      *
-     * @return the error tracker
-     * @see #unawareErrorTracker()
-     * @see ErrorTracker#attachErrorContext(ClassLoader)
-     * @see ErrorTracker#trackError(String, boolean)
-     * @see ErrorTracker#trackError(Throwable, boolean)
+     * @return the internal/global error tracker
      * @since 0.24.0
      */
-    @Contract(value = " -> new")
-    ErrorTracker awareErrorTracker();
+    @Contract(pure = true)
+    Optional<ErrorTracker> errorTracker();
 
-    /**
-     * Create a new context-unaware error tracker.
-     * <p>
-     * This tracker will not automatically track any errors.
-     * <p>
-     * You have to manually track errors using {@code #trackError}.
-     *
-     * @return the error tracker
-     * @see #awareErrorTracker()
-     * @see ErrorTracker#trackError(String)
-     * @see ErrorTracker#trackError(Throwable)
-     * @since 0.24.0
-     */
-    @Contract(value = " -> new", pure = true)
-    ErrorTracker unawareErrorTracker();
+    FastStatsContext globalErrorTracker(ErrorTracker errorTracker);
+
+    FastStatsContext registerErrorTracker(ErrorTracker errorTracker);
 
     /**
      * Get the SDK information shared by services created from this context.

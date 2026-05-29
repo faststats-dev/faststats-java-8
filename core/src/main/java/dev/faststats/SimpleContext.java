@@ -2,16 +2,27 @@ package dev.faststats;
 
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Contract;
+import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.util.Collections;
+import java.lang.Thread.UncaughtExceptionHandler;
+import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
-import java.util.WeakHashMap;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
 
+// fixme: thread safety
+// todo: cleanup
+// todo: introduce a factory pattern to shorten the constructor?
 @ApiStatus.Internal
 public non-sealed abstract class SimpleContext implements FastStatsContext {
+    private final ErrorTrackingSink errorTrackingSink = new ErrorTrackingSink(this);
+
     private final Config config;
     private final @Token String token;
     private final SdkInfo sdkInfo;
@@ -77,22 +88,30 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
     }
 
     @Override
-    @Contract(value = " -> new")
-    public final ErrorTracker awareErrorTracker() {
-        final var tracker = new SimpleErrorTracker(this);
-        tracker.attachErrorContext(ErrorTracker.class.getClassLoader());
-        return tracker;
+    @Contract(pure = true)
+    public final Optional<ErrorTracker> errorTracker() {
+        return Optional.ofNullable(internalErrorTracker);
     }
 
     @Override
-    @Contract(value = " -> new", pure = true)
-    public final ErrorTracker unawareErrorTracker() {
-        return new SimpleErrorTracker(this);
+    public final SimpleContext registerErrorTracker(final ErrorTracker tracker) {
+        errorTrackingSink.errorTrackers.add((SimpleErrorTracker) tracker);
+        errorTrackingSink.startErrorSubmission();
+        return this;
     }
 
     @Override
     @Contract(pure = true)
     public SdkInfo getSdkInfo() {
         return sdkInfo;
+    }
+
+    ErrorTrackingSink errorTrackingSink() {
+        return errorTrackingSink;
+    }
+
+    void trackInternalError(final Throwable error, final boolean handled) {
+        if (internalErrorTracker == null) return;
+        internalErrorTracker.trackError(error, handled);
     }
 }

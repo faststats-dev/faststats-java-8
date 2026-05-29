@@ -1,12 +1,13 @@
 package dev.faststats.hytale.logger;
 
+import dev.faststats.internal.Logger;
 import org.intellij.lang.annotations.PrintFormat;
 import org.jspecify.annotations.Nullable;
 
 import java.util.function.Predicate;
 import java.util.logging.Level;
 
-final class HytaleLogger implements dev.faststats.internal.Logger {
+final class HytaleLogger implements Logger {
     private final com.hypixel.hytale.logger.HytaleLogger logger;
     private volatile @Nullable Predicate<Level> filter;
 

@@ -20,8 +20,17 @@ final class ErrorHelper {
     private static final int STACK_TRACE_LENGTH = Math.min(500, Integer.getInteger("faststats.stack-trace-length", 300));
     private static final int STACK_TRACE_LIMIT = Math.min(50, Integer.getInteger("faststats.stack-trace-limit", 15));
 
+    private static final List<Map.Entry<Pattern, String>> defaultAnonymizationEntries = defaultAnonymizationEntries();
+
     public static JsonObject compile(final Throwable error, @Nullable final List<String> suppress, final boolean handled,
                                      final List<Map.Entry<Pattern, String>> customPatterns) {
+        final var patterns = new ArrayList<>(customPatterns);
+        patterns.addAll(defaultAnonymizationEntries);
+        return compileAll(error, suppress, handled, patterns);
+    }
+
+    private static JsonObject compileAll(final Throwable error, @Nullable final List<String> suppress, final boolean handled,
+                                         final List<Map.Entry<Pattern, String>> customPatterns) {
         final var report = new JsonObject();
         final var message = getAnonymizedMessage(error, customPatterns);
 
@@ -49,6 +58,7 @@ final class ErrorHelper {
         return report;
     }
 
+    // fixme: unmaintainable mess, i already forgot what it does
     private static void appendCauseChain(@Nullable Throwable cause, final List<String> parentStack,
                                          @Nullable final List<String> suppress, final JsonArray stacktrace,
                                          final List<Map.Entry<Pattern, String>> customPatterns) {
@@ -206,15 +216,27 @@ final class ErrorHelper {
         return truncated;
     }
 
-    public static Pattern discordWebhookPattern() {
+    private static List<Map.Entry<Pattern, String>> defaultAnonymizationEntries() {
+        final var entries = new ArrayList<>(List.of(
+                Map.entry(ipv4Pattern(), "[IP hidden]"),
+                Map.entry(ipv6Pattern(), "[IP hidden]"),
+                Map.entry(userHomePathPattern(), "$1$2$3[username hidden]"),
+                Map.entry(discordWebhookPattern(), "$1[token hidden]"),
+                Map.entry(jdbcUrlPattern(), "$1[password hidden]$2")
+        ));
+        usernamePattern().ifPresent(pattern -> entries.add(Map.entry(pattern, "[username hidden]")));
+        return entries;
+    }
+
+    private static Pattern discordWebhookPattern() {
         return Pattern.compile("(https://discord\\.com/api/webhooks/\\d+/)[\\w-]+");
     }
 
-    public static Pattern ipv4Pattern() {
+    private static Pattern ipv4Pattern() {
         return Pattern.compile("\\b(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\.(\\d{1,3})\\b");
     }
 
-    public static Pattern ipv6Pattern() {
+    private static Pattern ipv6Pattern() {
         return Pattern.compile("(?i)\\b([0-9a-f]{1,4}:){7}[0-9a-f]{1,4}\\b|" + // Full form
                 "(?i)\\b([0-9a-f]{1,4}:){1,7}:\\b|" +                          // Trailing ::
                 "(?i)\\b([0-9a-f]{1,4}:){1,6}:[0-9a-f]{1,4}\\b|" +             // :: in middle (1 group after)
@@ -228,11 +250,11 @@ final class ErrorHelper {
                 "(?i)\\b::\\b");                                               // Just ::
     }
 
-    public static Pattern jdbcUrlPattern() {
+    private static Pattern jdbcUrlPattern() {
         return Pattern.compile("(jdbc:[^:]+://[^:]+:(?:\\d+:)?)[^@]+(@)");
     }
 
-    public static Pattern userHomePathPattern() {
+    private static Pattern userHomePathPattern() {
         return Pattern.compile("(/home/)[^/\\s]+" +       // Linux: /home/username
                 "|(/Users/)[^/\\s]+" +                    // macOS: /Users/username
                 "|((?i)[A-Z]:\\\\Users\\\\)[^\\\\\\s]+"); // Windows: A-Z:\\Users\\username
@@ -240,7 +262,7 @@ final class ErrorHelper {
 
     private static final Set<String> allowedNames = Set.of("minecraft", "server", "root", "ubuntu");
 
-    public static Optional<Pattern> usernamePattern() {
+    private static Optional<Pattern> usernamePattern() {
         return Optional.ofNullable(System.getProperty("user.name"))
                 .filter(s -> s.trim().length() > 2)
                 .filter(s -> !allowedNames.contains(s.toLowerCase(Locale.ROOT)))

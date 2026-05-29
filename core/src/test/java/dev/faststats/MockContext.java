@@ -1,10 +1,16 @@
 package dev.faststats;
 
+import org.jspecify.annotations.Nullable;
+
 import java.util.UUID;
 
 public final class MockContext extends SimpleContext {
-    public MockContext(final UUID serverId, final boolean debug) throws IllegalArgumentException {
-        super(new MockConfig(serverId, debug), "core:test", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    public MockContext() throws IllegalArgumentException {
+        this(null);
+    }
+
+    public MockContext(@Nullable final ErrorTracker internalErrorTracker) throws IllegalArgumentException {
+        super(new MockConfig(UUID.randomUUID()), "core:test", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", internalErrorTracker);
     }
 
     @Override
@@ -22,7 +28,7 @@ public final class MockContext extends SimpleContext {
         return "Mock";
     }
 
-    private record MockConfig(UUID serverId, boolean debug) implements dev.faststats.Config {
+    private record MockConfig(UUID serverId) implements Config {
         @Override
         public boolean enabled() {
             return true;
@@ -35,6 +41,11 @@ public final class MockContext extends SimpleContext {
 
         @Override
         public boolean additionalMetrics() {
+            return true;
+        }
+
+        @Override
+        public boolean debug() {
             return true;
         }
     }

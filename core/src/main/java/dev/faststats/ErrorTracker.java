@@ -15,6 +15,31 @@ import java.util.regex.Pattern;
  */
 public sealed interface ErrorTracker permits SimpleErrorTracker {
     /**
+     * Creates a context-aware error tracker policy.
+     *
+     * @return the error tracker policy
+     * @since 0.24.0
+     */
+    @Contract(value = " -> new", pure = true)
+    static ErrorTracker aware() {
+        final var tracker = new SimpleErrorTracker();
+        tracker.attachErrorContext(ErrorTracker.class.getClassLoader());
+        return tracker;
+    }
+
+    /**
+     * Creates a context-unaware error tracker policy.
+     *
+     * @return the error tracker policy
+     * @since 0.24.0
+     */
+    @Contract(value = " -> new", pure = true)
+    static ErrorTracker unaware() {
+        return new SimpleErrorTracker();
+    }
+    
+    // todo: return tracker object to supply additional information
+    /**
      * Tracks a handled  error.
      *
      * @param message the error message
@@ -35,6 +60,7 @@ public sealed interface ErrorTracker permits SimpleErrorTracker {
     @Contract(mutates = "this")
     void trackError(Throwable error);
 
+    // todo: remove handled overloads
     /**
      * Tracks an error.
      * <p>

@@ -1,6 +1,5 @@
 package dev.faststats;
 
-import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import dev.faststats.data.Metric;
 import dev.faststats.internal.Logger;
@@ -23,8 +22,7 @@ import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 import java.util.zip.GZIPOutputStream;
@@ -39,7 +37,7 @@ public abstract class SimpleMetrics implements Metrics {
             .connectTimeout(Duration.ofSeconds(3))
             .version(HttpClient.Version.HTTP_1_1)
             .build();
-    private @Nullable ScheduledExecutorService executor = null;
+    private @Nullable ScheduledFuture<?> submissionJob = null;
 
     private final @Nullable Runnable flush;
     private final Set<Metric<?>> metrics;
@@ -107,22 +105,16 @@ public abstract class SimpleMetrics implements Metrics {
             return;
         }
 
-        this.executor = Executors.newSingleThreadScheduledExecutor(runnable -> { // todo: SINGLE THREAD??? what was i smoking?
-            final var thread = new Thread(runnable, "metrics-submitter");
-            thread.setDaemon(true);
-            return thread;
-        });
-
         logger.info("Starting metrics submission");
-        executor.scheduleAtFixedRate(this::submit, Math.max(0, initialDelay), Math.max(1000, period), unit);
+        submissionJob = context.scheduleSubmission(this::submit, initialDelay, period, unit);
     }
 
     protected boolean isSubmitting() {
-        return executor != null && !executor.isShutdown();
+        return submissionJob != null && !submissionJob.isCancelled();
     }
 
     protected final void trackError(final Throwable error, final boolean handled) {
-        context.errorTrackingSink().track(error, handled);
+        context.trackInternalError(error, handled);
     }
 
     // todo: improve logging to be less cluttered
@@ -202,7 +194,7 @@ public abstract class SimpleMetrics implements Metrics {
             appendDefaultData(metrics);
         } catch (final Throwable t) {
             logger.error("Failed to append default data", t);
-            // getErrorTracker().ifPresent(tracker -> tracker.trackError(t)); // todo: fixme – report directly to faststats?
+            context.trackInternalError(t, true);
         }
 
         this.metrics.forEach(metric -> {
@@ -210,7 +202,7 @@ public abstract class SimpleMetrics implements Metrics {
                 metric.getData().ifPresent(element -> metrics.add(metric.getId(), element));
             } catch (final Throwable t) {
                 logger.error("Failed to build metric data: %s", t, metric.getId());
-                // getErrorTracker().ifPresent(tracker -> tracker.trackError(t)); // todo: fixme – report directly to faststats?
+                context.trackInternalError(t, true);
             }
         });
 
@@ -219,17 +211,6 @@ public abstract class SimpleMetrics implements Metrics {
         data.addProperty("identifier", context.getConfig().serverId().toString());
         data.add("data", metrics);
 
-        // todo: remove with dedicated error tracking route
-        if (context.getConfig().errorTracking()) context.errorTrackers().stream()
-                .map(SimpleErrorTracker.class::cast)
-                .map(SimpleErrorTracker::getData)
-                .filter(errors -> !errors.isEmpty())
-                .reduce((first, second) -> {
-                    final var errors = new JsonArray(first.size() + second.size());
-                    errors.addAll(first);
-                    errors.addAll(second);
-                    return first;
-                }).ifPresent(errors -> data.add("errors", errors));
         return data;
     }
 
@@ -238,15 +219,15 @@ public abstract class SimpleMetrics implements Metrics {
 
     @Override
     public void shutdown() {
-        context.errorTrackers().forEach(ErrorTracker::detachErrorContext);
-        if (executor != null) try {
+        // context.errorTrackers().forEach(ErrorTracker::detachErrorContext); // todo: detach all error contexts on shutdown?
+        if (submissionJob != null) try {
             logger.info("Shutting down metrics submission");
-            executor.shutdown();
+            context.unregisterSubmission(submissionJob);
             submit();
         } catch (final Throwable t) {
             logger.error("Failed to submit metrics on shutdown", t);
         } finally {
-            executor = null;
+            submissionJob = null;
         }
     }
 

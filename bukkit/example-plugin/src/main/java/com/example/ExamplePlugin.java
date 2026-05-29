@@ -9,9 +9,10 @@ import org.bukkit.plugin.java.JavaPlugin;
 import java.util.concurrent.atomic.AtomicInteger;
 
 public final class ExamplePlugin extends JavaPlugin {
+    public static final ErrorTracker ERROR_TRACKER = ErrorTracker.aware();
     private final AtomicInteger gameCount = new AtomicInteger();
-    private final BukkitContext context = new BukkitContext(this, "YOUR_TOKEN_HERE");
-    public final ErrorTracker errorTracker = context.awareErrorTracker();
+    private final BukkitContext context = new BukkitContext(this, "YOUR_TOKEN_HERE")
+            .globalErrorTracker(ERROR_TRACKER);
 
     private final BukkitMetrics metrics = context.metricsFactory()
             // Custom metrics require a corresponding data source in your project settings

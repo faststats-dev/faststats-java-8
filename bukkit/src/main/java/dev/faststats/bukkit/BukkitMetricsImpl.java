@@ -81,7 +81,7 @@ final class BukkitMetricsImpl extends SimpleMetrics implements BukkitMetrics {
             return plugin.getServer().getOnlinePlayers().size();
         } catch (final Throwable t) {
             logger.error("Failed to get player count", t);
-            // todo: track error?
+            trackError(t, true);
             return 0;
         }
     }
@@ -90,7 +90,9 @@ final class BukkitMetricsImpl extends SimpleMetrics implements BukkitMetrics {
     public void ready() {
         try {
             Class.forName("com.destroystokyo.paper.event.server.ServerExceptionEvent");
-            plugin.getServer().getPluginManager().registerEvents(new PaperEventListener(plugin, context), plugin);
+            plugin.getServer().getPluginManager().registerEvents(new PaperEventListener(plugin, error -> {
+                trackError(error, false);
+            }), plugin);
         } catch (final ClassNotFoundException ignored) {
         }
     }

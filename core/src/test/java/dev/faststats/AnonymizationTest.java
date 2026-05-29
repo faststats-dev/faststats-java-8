@@ -3,7 +3,6 @@ package dev.faststats;
 import com.google.gson.JsonObject;
 import org.junit.jupiter.api.Test;
 
-import java.util.UUID;
 import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -11,12 +10,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public final class AnonymizationTest {
-    private final MockContext context = new MockContext(UUID.randomUUID(), false);
+    private static final SimpleErrorTracker TRACKER = (SimpleErrorTracker) ErrorTracker.unaware();
+    private final FastStatsContext context = new MockContext(TRACKER);
     private final MockMetrics metrics = (MockMetrics) context.metricsFactory().create();
-    private final ErrorTracker tracker = context.unawareErrorTracker();
 
     private JsonObject getError() {
-        return ((SimpleErrorTracker) tracker).getData().get(0).getAsJsonObject();
+        return TRACKER.getData().get(0).getAsJsonObject();
     }
 
     private String getErrorMessage() {
@@ -25,108 +24,108 @@ public final class AnonymizationTest {
 
     @Test
     public void ipv4Anonymization() {
-        tracker.trackError("Connection refused at 192.168.1.100");
+        TRACKER.trackError("Connection refused at 192.168.1.100");
         assertEquals("Connection refused at [IP hidden]", getErrorMessage());
     }
 
     @Test
     public void ipv6Anonymization() {
-        tracker.trackError("Failed to connect to f833:be65:65da:975b:4896:88f7:6964:44c0");
+        TRACKER.trackError("Failed to connect to f833:be65:65da:975b:4896:88f7:6964:44c0");
         assertEquals("Failed to connect to [IP hidden]", getErrorMessage());
     }
 
     @Test
     public void userHomePathAnonymization() {
         final var username = System.getProperty("user.name", "user");
-        tracker.trackError("File not found: /home/" + username + "/config.yml");
+        TRACKER.trackError("File not found: /home/" + username + "/config.yml");
         assertEquals("File not found: /home/[username hidden]/config.yml", getErrorMessage());
     }
 
     @Test
     public void windowsUserPathAnonymization() {
         final var username = System.getProperty("user.name", "user");
-        tracker.trackError("File not found: C:\\Users\\" + username + "\\config.yml");
+        TRACKER.trackError("File not found: C:\\Users\\" + username + "\\config.yml");
         assertEquals("File not found: C:\\Users\\[username hidden]\\config.yml", getErrorMessage());
     }
 
     @Test
     public void macUserPathAnonymization() {
         final var username = System.getProperty("user.name", "user");
-        tracker.trackError("File not found: /Users/" + username + "/config.yml");
+        TRACKER.trackError("File not found: /Users/" + username + "/config.yml");
         assertEquals("File not found: /Users/[username hidden]/config.yml", getErrorMessage());
     }
 
     @Test
     public void usernameAnonymizationIsCaseInsensitive() {
         final var username = System.getProperty("user.name", "user");
-        tracker.trackError("Error for " + swapCase(username));
+        TRACKER.trackError("Error for " + swapCase(username));
         assertEquals("Error for [username hidden]", getErrorMessage());
     }
 
     @Test
     public void discordWebhookAnonymization() {
-        tracker.trackError("Webhook failed: https://discord.com/api/webhooks/1234567890987654321/aAaAaAaa0AAaAAaaaAAAAa_0AAAAAAAaaaAaaAaaAAAA0aA00AAA0AAA0aAAaA0a0a0A");
+        TRACKER.trackError("Webhook failed: https://discord.com/api/webhooks/1234567890987654321/aAaAaAaa0AAaAAaaaAAAAa_0AAAAAAAaaaAaaAaaAAAA0aA00AAA0AAA0aAAaA0a0a0A");
         assertEquals("Webhook failed: https://discord.com/api/webhooks/1234567890987654321/[token hidden]", getErrorMessage());
     }
 
     @Test
     public void jdbcUrlAnonymization() {
-        tracker.trackError("Failed: jdbc:mysql://localhost:3306:secretpass@mydb");
+        TRACKER.trackError("Failed: jdbc:mysql://localhost:3306:secretpass@mydb");
         assertEquals("Failed: jdbc:mysql://localhost:3306:[password hidden]@mydb", getErrorMessage());
     }
 
     @Test
     public void jdbcUrlNoPortAnonymization() {
-        tracker.trackError("Failed: jdbc:mysql://mydb.com:secretpass@mydb");
+        TRACKER.trackError("Failed: jdbc:mysql://mydb.com:secretpass@mydb");
         assertEquals("Failed: jdbc:mysql://mydb.com:[password hidden]@mydb", getErrorMessage());
     }
 
     @Test
     public void jdbcUrlIpAnonymization() {
-        tracker.trackError("Failed: jdbc:mysql://127.0.0.1:3306:secretpass@mydb");
+        TRACKER.trackError("Failed: jdbc:mysql://127.0.0.1:3306:secretpass@mydb");
         assertEquals("Failed: jdbc:mysql://[IP hidden]:3306:[password hidden]@mydb", getErrorMessage());
     }
 
     @Test
     public void customPatternAnonymizesMessage() {
-        tracker.anonymize("token=[^&]+", "token=[redacted]");
-        tracker.trackError("Request failed with token=abc123secret&user=test");
+        TRACKER.anonymize("token=[^&]+", "token=[redacted]");
+        TRACKER.trackError("Request failed with token=abc123secret&user=test");
         assertEquals("Request failed with token=[redacted]&user=test", getErrorMessage());
     }
 
     @Test
     public void customPatternWithCompiledPattern() {
-        tracker.anonymize(Pattern.compile("Bearer [A-Za-z0-9._~+/=-]+"), "Bearer [redacted]");
-        tracker.trackError("Auth failed: Bearer eyJhbGciOiJIUzI1NiJ9.payload.signature");
+        TRACKER.anonymize(Pattern.compile("Bearer [A-Za-z0-9._~+/=-]+"), "Bearer [redacted]");
+        TRACKER.trackError("Auth failed: Bearer eyJhbGciOiJIUzI1NiJ9.payload.signature");
         assertEquals("Auth failed: Bearer [redacted]", getErrorMessage());
     }
 
     @Test
     public void customPatternWithCaptureGroupReplacement() {
-        tracker.anonymize("(api_key=)[^&\\s]+", "$1[redacted]");
-        tracker.trackError("GET /data?api_key=sk_live_12345&format=json failed");
+        TRACKER.anonymize("(api_key=)[^&\\s]+", "$1[redacted]");
+        TRACKER.trackError("GET /data?api_key=sk_live_12345&format=json failed");
         assertEquals("GET /data?api_key=[redacted]&format=json failed", getErrorMessage());
     }
 
     @Test
     public void multipleCustomPatterns() {
-        tracker.anonymize("Bearer [A-Za-z0-9._~+/=-]+", "Bearer [redacted]");
-        tracker.anonymize("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}", "[email hidden]");
-        tracker.trackError("Auth failed for user@example.com with Bearer eyJ0eXAi");
+        TRACKER.anonymize("Bearer [A-Za-z0-9._~+/=-]+", "Bearer [redacted]")
+                .anonymize("[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}", "[email hidden]");
+        TRACKER.trackError("Auth failed for user@example.com with Bearer eyJ0eXAi");
         assertEquals("Auth failed for [email hidden] with Bearer [redacted]", getErrorMessage());
     }
 
     @Test
     public void customPatternChaining() {
-        tracker.anonymize("secret-[a-z]+", "[secret hidden]");
-        tracker.anonymize("AKIA[0-9A-Z]{16}", "[aws-key hidden]");
-        tracker.trackError("Credentials: secret-abcdef / AKIA1234567890ABCDEF");
+        TRACKER.anonymize("secret-[a-z]+", "[secret hidden]")
+                .anonymize("AKIA[0-9A-Z]{16}", "[aws-key hidden]");
+        TRACKER.trackError("Credentials: secret-abcdef / AKIA1234567890ABCDEF");
         assertEquals("Credentials: [secret hidden] / [aws-key hidden]", getErrorMessage());
     }
 
     @Test
     public void customPatternAppliedToCauseChain() {
-        tracker.anonymize("ssn=\\d{3}-\\d{2}-\\d{4}", "ssn=[redacted]");
+        final var tracker = TRACKER.anonymize("ssn=\\d{3}-\\d{2}-\\d{4}", "ssn=[redacted]");
         final var cause = new IllegalArgumentException("Validation failed for ssn=123-45-6789");
         tracker.trackError(new RuntimeException("Processing error", cause));
         final var error = getError();
@@ -142,30 +141,30 @@ public final class AnonymizationTest {
 
     @Test
     public void nullMessageNotAffected() {
-        tracker.anonymize("anything", "[redacted]");
-        tracker.trackError(new RuntimeException((String) null));
+        TRACKER.anonymize("anything", "[redacted]");
+        TRACKER.trackError(new RuntimeException((String) null));
         assertFalse(getError().has("message"));
     }
 
     @Test
     public void customAndBuiltInPatternsCombined() {
-        tracker.anonymize("session=[a-f0-9]+", "session=[redacted]");
+        TRACKER.anonymize("session=[a-f0-9]+", "session=[redacted]");
         final var username = System.getProperty("user.name", "user");
-        tracker.trackError("Error for 192.168.1.1 with session=deadbeef01 at /home/" + username + "/app");
+        TRACKER.trackError("Error for 192.168.1.1 with session=deadbeef01 at /home/" + username + "/app");
         assertEquals("Error for [IP hidden] with session=[redacted] at /home/[username hidden]/app", getErrorMessage());
     }
 
     @Test
     public void emptyReplacementRemovesMatch() {
-        tracker.anonymize("\\(internal ref: [^)]+\\)", "");
-        tracker.trackError("Request failed (internal ref: REF-98765)");
+        TRACKER.anonymize("\\(internal ref: [^)]+\\)", "");
+        TRACKER.trackError("Request failed (internal ref: REF-98765)");
         assertEquals("Request failed ", getErrorMessage());
     }
 
     @Test
     public void patternDoesNotMatchLeavesMessageUnchanged() {
-        tracker.anonymize("SECRET_[A-Z]+", "[redacted]");
-        tracker.trackError("just a normal error");
+        TRACKER.anonymize("SECRET_[A-Z]+", "[redacted]");
+        TRACKER.trackError("just a normal error");
         assertEquals("just a normal error", getErrorMessage());
     }
 
