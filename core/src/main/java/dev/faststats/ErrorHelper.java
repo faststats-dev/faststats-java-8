@@ -59,7 +59,7 @@ final class ErrorHelper {
 
         final var attributes = new JsonObject();
         trackedError.attributes().forEachPrimitive(attributes::add);
-        if (!attributes.isEmpty()) report.add("attributes", attributes);
+        if (!attributes.isEmpty()) report.add("context", attributes);
 
         return report;
     }

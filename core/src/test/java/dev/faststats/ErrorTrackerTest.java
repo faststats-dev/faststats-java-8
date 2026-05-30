@@ -329,12 +329,12 @@ public class ErrorTrackerTest {
                 .put("retrying", true));
 
         final var report = tracker.getData().get(0).getAsJsonObject();
-        final var attributes = report.getAsJsonObject("attributes");
+        final var context = report.getAsJsonObject("context");
 
         assertTrue(report.get("handled").getAsBoolean());
-        assertEquals("startup", attributes.get("stage").getAsString());
-        assertEquals(2, attributes.get("attempt").getAsInt());
-        assertTrue(attributes.get("retrying").getAsBoolean());
+        assertEquals("startup", context.get("stage").getAsString());
+        assertEquals(2, context.get("attempt").getAsInt());
+        assertTrue(context.get("retrying").getAsBoolean());
     }
 
     private RuntimeException createStableError() {
