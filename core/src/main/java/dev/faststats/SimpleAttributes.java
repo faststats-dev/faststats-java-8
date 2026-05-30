@@ -2,10 +2,10 @@ package dev.faststats;
 
 import com.google.gson.JsonPrimitive;
 
-import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 
-record SimpleAttributes(Map<String, JsonPrimitive> attributes) implements Attributes {
+record SimpleAttributes(ConcurrentHashMap<String, JsonPrimitive> attributes) implements Attributes {
     @Override
     public Attributes put(final String key, final String value) {
         attributes.put(key, new JsonPrimitive(value));
@@ -29,6 +29,11 @@ record SimpleAttributes(Map<String, JsonPrimitive> attributes) implements Attrib
     public Attributes remove(final String key) {
         attributes.remove(key);
         return this;
+    }
+
+    @Override
+    public boolean containsKey(final String key) {
+        return attributes.containsKey(key);
     }
 
     @Override

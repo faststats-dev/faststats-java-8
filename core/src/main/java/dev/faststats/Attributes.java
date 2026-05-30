@@ -85,6 +85,16 @@ public sealed interface Attributes permits SimpleAttributes {
     Attributes remove(String key);
 
     /**
+     * Returns whether a value is set for the given key.
+     *
+     * @param key the key
+     * @return whether a value is set
+     * @since 0.24.0
+     */
+    @Contract(pure = true)
+    boolean containsKey(String key);
+
+    /**
      * Visit each stored attribute as its underlying JSON primitive value.
      *
      * @param action the action to invoke for each key-value pair
