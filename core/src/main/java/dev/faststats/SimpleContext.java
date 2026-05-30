@@ -2,19 +2,11 @@ package dev.faststats;
 
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Contract;
-import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.lang.Thread.UncaughtExceptionHandler;
 import java.util.Optional;
 import java.util.Properties;
-import java.util.Set;
-import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
-import java.util.concurrent.TimeUnit;
 
 // fixme: thread safety
 // todo: cleanup
@@ -90,7 +82,15 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
     @Override
     @Contract(pure = true)
     public final Optional<ErrorTracker> errorTracker() {
-        return Optional.ofNullable(internalErrorTracker);
+        // todo: do we even want the error tracker to be option? or just throw if not configured?
+        return errorTrackingSink.internalErrorTracker();
+    }
+
+    @Override
+    public FastStatsContext globalErrorTracker(final ErrorTracker errorTracker) {
+        // todo: do we want to allow reinitialization? maybe a factory pattern for the context is the better go to here
+        errorTrackingSink.setInternalErrorTracker(errorTracker);
+        return this;
     }
 
     @Override
@@ -111,7 +111,6 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
     }
 
     void trackInternalError(final Throwable error, final boolean handled) {
-        if (internalErrorTracker == null) return;
-        internalErrorTracker.trackError(error, handled);
+        errorTrackingSink.trackInternalError(error, handled);
     }
 }

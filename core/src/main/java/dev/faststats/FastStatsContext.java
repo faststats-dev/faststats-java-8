@@ -38,6 +38,7 @@ public sealed interface FastStatsContext permits SimpleContext {
      * @return a new platform metrics factory
      * @since 0.24.0
      */
+    // todo: if the context is replaced with a factory pattern make the metrics instance context wide so only one can exist and querying the metrics instance is done ON the context
     @Contract(value = "-> new", pure = true)
     Metrics.Factory metricsFactory();
 
@@ -47,6 +48,7 @@ public sealed interface FastStatsContext permits SimpleContext {
      * @return a new feature flag service factory
      * @since 0.24.0
      */
+    // todo: if the context is replaced with a factory pattern make the feature flag service instance context wide so only one can exist and querying the service instance is done ON the context
     @Contract(value = "-> new", pure = true)
     FeatureFlagService.Factory featureFlagServiceFactory();
 
@@ -59,6 +61,7 @@ public sealed interface FastStatsContext permits SimpleContext {
     @Contract(pure = true)
     Optional<ErrorTracker> errorTracker();
 
+    // todo: only one global error tracker can exist, let it be defined on the context factory
     FastStatsContext globalErrorTracker(ErrorTracker errorTracker);
 
     FastStatsContext registerErrorTracker(ErrorTracker errorTracker);

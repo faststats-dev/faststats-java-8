@@ -15,6 +15,7 @@ import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.Executors;
@@ -37,14 +38,14 @@ final class ErrorTrackingSink {
     final Set<SimpleErrorTracker> errorTrackers = new CopyOnWriteArraySet<>();
     final Set<ScheduledFuture<?>> submissionJobs = new CopyOnWriteArraySet<>();
     
-    private final @Nullable SimpleErrorTracker internalErrorTracker;
+    private @Nullable SimpleErrorTracker internalErrorTracker;
     private volatile @Nullable ScheduledExecutorService submissionScheduler;
     private volatile @Nullable ScheduledFuture<?> errorSubmissionJob;
 
     private static final Object DISPATCHER_LOCK = new Object();
     private static final Set<SimpleContext> DISPATCHER_CONTEXTS = new CopyOnWriteArraySet<>();
     private static final ThreadLocal<Boolean> DISPATCHING = ThreadLocal.withInitial(() -> false);
-    private static @Nullable Thread.UncaughtExceptionHandler originalHandler;
+    private static Thread.@Nullable UncaughtExceptionHandler originalHandler;
 
     ErrorTrackingSink(final SimpleContext context) {
         this.context = context;
@@ -63,16 +64,14 @@ final class ErrorTrackingSink {
 
     JsonObject getData() {
         final var data = new JsonObject();
-        final var reports = new JsonArray(this.reports.size());
-        this.reports.forEach((entry, count) -> {
-            final var copy = entry.deepCopy();
-            if (count > 1) copy.addProperty("count", count);
-            reports.add(copy);
-        });
+        final var reports = new JsonArray();
+        if (internalErrorTracker != null) reports.addAll(internalErrorTracker.getData());
+        errorTrackers.forEach(tracker -> reports.addAll(tracker.getData()));
         context.getSdkInfo().getBuildId().ifPresent(id -> data.addProperty("buildId", id));
         // todo: add global context
         data.addProperty("sdk_name", context.getSdkInfo().getName());
         data.addProperty("sdk_version", context.getSdkInfo().getVersion());
+        data.add("reports", reports);
         return data;
     }
 
@@ -132,6 +131,8 @@ final class ErrorTrackingSink {
     }
 
     void clear() {
+        if (internalErrorTracker != null) internalErrorTracker.clear();
+        errorTrackers.forEach(SimpleErrorTracker::clear);
     }
 
     ScheduledFuture<?> scheduleSubmission(
@@ -149,6 +150,24 @@ final class ErrorTrackingSink {
     void unregisterSubmission(final ScheduledFuture<?> future) {
         future.cancel(false);
         submissionJobs.remove(future);
+    }
+
+    Optional<ErrorTracker> internalErrorTracker() {
+        return Optional.ofNullable(internalErrorTracker);
+    }
+
+    void setInternalErrorTracker(final ErrorTracker errorTracker) {
+        if (!(errorTracker instanceof SimpleErrorTracker tracker)) {
+            throw new IllegalArgumentException("Unsupported error tracker implementation: " + errorTracker.getClass().getName());
+        }
+        internalErrorTracker = tracker;
+        startErrorSubmission();
+    }
+
+    void trackInternalError(final Throwable error, final boolean handled) {
+        final var tracker = internalErrorTracker;
+        if (tracker == null) return;
+        tracker.trackError(error, handled);
     }
 
     boolean isSubmissionSchedulerRunning() {
@@ -172,9 +191,9 @@ final class ErrorTrackingSink {
     }
 
     void startErrorSubmission() {
-        if (!context.getConfig().errorTracking() || context.errorSubmissionJob != null) return;
+        if (!context.getConfig().errorTracking() || errorSubmissionJob != null) return;
         errorSubmissionJob = scheduleSubmission(
-                errorTrackingSink::submit,
+                this::submit,
                 TimeUnit.SECONDS.toMillis(Long.getLong("faststats.initial-delay", 30)),
                 TimeUnit.MINUTES.toMillis(30),
                 TimeUnit.MILLISECONDS

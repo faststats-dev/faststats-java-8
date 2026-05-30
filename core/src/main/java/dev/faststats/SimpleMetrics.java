@@ -106,7 +106,7 @@ public abstract class SimpleMetrics implements Metrics {
         }
 
         logger.info("Starting metrics submission");
-        submissionJob = context.scheduleSubmission(this::submit, initialDelay, period, unit);
+        submissionJob = context.errorTrackingSink().scheduleSubmission(this::submit, initialDelay, period, unit);
     }
 
     protected boolean isSubmitting() {
@@ -222,7 +222,7 @@ public abstract class SimpleMetrics implements Metrics {
         // context.errorTrackers().forEach(ErrorTracker::detachErrorContext); // todo: detach all error contexts on shutdown?
         if (submissionJob != null) try {
             logger.info("Shutting down metrics submission");
-            context.unregisterSubmission(submissionJob);
+            context.errorTrackingSink().unregisterSubmission(submissionJob);
             submit();
         } catch (final Throwable t) {
             logger.error("Failed to submit metrics on shutdown", t);

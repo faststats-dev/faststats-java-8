@@ -1,5 +1,6 @@
 package dev.faststats.bukkit;
 
+import dev.faststats.ErrorTracker;
 import dev.faststats.SimpleContext;
 import dev.faststats.Token;
 import dev.faststats.config.SimpleConfig;
@@ -25,6 +26,12 @@ public final class BukkitContext extends SimpleContext {
     @Contract(value = " -> new", pure = true)
     public BukkitMetrics.Factory metricsFactory() {
         return new BukkitMetricsImpl.Factory(this);
+    }
+
+    @Override
+    public BukkitContext globalErrorTracker(final ErrorTracker errorTracker) {
+        super.globalErrorTracker(errorTracker);
+        return this;
     }
 
     private static Path getConfigPath(final Plugin plugin) {
