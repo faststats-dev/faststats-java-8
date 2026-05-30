@@ -59,7 +59,17 @@ public sealed interface FastStatsContext permits SimpleContext {
     @Contract(pure = true)
     Optional<ErrorTracker> errorTracker();
 
-    // todo: document
+    /**
+     * Registers an additional error tracker for submission with this context.
+     * <p>
+     * The global/internal tracker returned by {@link #errorTracker()} is configured
+     * by the context factory. Additional trackers registered here are submitted by
+     * the same context, but are not used for internal FastStats errors.
+     *
+     * @param errorTracker the additional error tracker
+     * @return this context
+     * @since 0.24.0
+     */
     FastStatsContext registerErrorTracker(ErrorTracker errorTracker);
 
     /**
