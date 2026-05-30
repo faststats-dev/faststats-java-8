@@ -37,18 +37,60 @@ final class ErrorTrackingSink {
 
     final Set<SimpleErrorTracker> errorTrackers = new CopyOnWriteArraySet<>();
     final Set<ScheduledFuture<?>> submissionJobs = new CopyOnWriteArraySet<>();
-    
+
     private @Nullable SimpleErrorTracker internalErrorTracker;
     private volatile @Nullable ScheduledExecutorService submissionScheduler;
     private volatile @Nullable ScheduledFuture<?> errorSubmissionJob;
 
     private static final Object DISPATCHER_LOCK = new Object();
-    private static final Set<SimpleContext> DISPATCHER_CONTEXTS = new CopyOnWriteArraySet<>();
+    private static final Set<SimpleErrorTracker> DISPATCHER_TRACKERS = new CopyOnWriteArraySet<>();
     private static final ThreadLocal<Boolean> DISPATCHING = ThreadLocal.withInitial(() -> false);
     private static Thread.@Nullable UncaughtExceptionHandler originalHandler;
 
     ErrorTrackingSink(final SimpleContext context) {
         this.context = context;
+    }
+
+    // fixme: hacky shit; it only has to compile and pass tests for now
+    static void attachErrorTracker(final SimpleErrorTracker tracker) {
+        synchronized (DISPATCHER_LOCK) {
+            if (DISPATCHER_TRACKERS.isEmpty()) {
+                originalHandler = Thread.getDefaultUncaughtExceptionHandler();
+                Thread.setDefaultUncaughtExceptionHandler(ErrorTrackingSink::handleUncaughtException);
+            }
+            DISPATCHER_TRACKERS.add(tracker);
+        }
+    }
+
+    // fixme: hacky shit; it only has to compile and pass tests for now
+    static void detachErrorTracker(final SimpleErrorTracker tracker) {
+        synchronized (DISPATCHER_LOCK) {
+            DISPATCHER_TRACKERS.remove(tracker);
+            if (DISPATCHER_TRACKERS.isEmpty()) {
+                Thread.setDefaultUncaughtExceptionHandler(originalHandler);
+                originalHandler = null;
+            }
+        }
+    }
+
+    // fixme: hacky shit; it only has to compile and pass tests for now
+    private static void handleUncaughtException(final Thread thread, final Throwable error) {
+        if (!DISPATCHING.get()) {
+            DISPATCHING.set(true);
+            try {
+                for (final var tracker : DISPATCHER_TRACKERS) {
+                    final var loader = tracker.attachedLoader();
+                    if (loader != null && !ErrorHelper.isSameLoader(loader, error)) continue;
+                    tracker.trackError(error).handled(false);
+                    tracker.getContextErrorHandler().ifPresent(handler -> handler.accept(loader, error));
+                }
+            } finally {
+                DISPATCHING.set(false);
+            }
+        }
+
+        final var handler = originalHandler;
+        if (handler != null) handler.uncaughtException(thread, error);
     }
 
     private static URI getErrorTrackerServerUrl() {
@@ -157,7 +199,7 @@ final class ErrorTrackingSink {
     }
 
     void setInternalErrorTracker(final ErrorTracker errorTracker) {
-        if (!(errorTracker instanceof SimpleErrorTracker tracker)) {
+        if (!(errorTracker instanceof final SimpleErrorTracker tracker)) {
             throw new IllegalArgumentException("Unsupported error tracker implementation: " + errorTracker.getClass().getName());
         }
         internalErrorTracker = tracker;

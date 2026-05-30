@@ -108,16 +108,14 @@ final class SimpleErrorTracker implements ErrorTracker {
         if (contextAttached) throw new IllegalStateException("Error context already attached");
         contextAttached = true;
         attachedLoader = loader;
-        // fixme: single source of truth?
-        // SimpleContext.attachErrorTracker(this);
+        ErrorTrackingSink.attachErrorTracker(this);
     }
 
     @Override
     public synchronized void detachErrorContext() {
         if (!contextAttached) return;
         contextAttached = false;
-        // fixme: single source of truth?
-        // SimpleContext.detachErrorTracker(this);
+        ErrorTrackingSink.detachErrorTracker(this);
     }
 
     @Override
@@ -133,5 +131,9 @@ final class SimpleErrorTracker implements ErrorTracker {
     @Override
     public synchronized Optional<BiConsumer<@Nullable ClassLoader, Throwable>> getContextErrorHandler() {
         return Optional.ofNullable(errorEvent);
+    }
+
+    @Nullable ClassLoader attachedLoader() {
+        return attachedLoader;
     }
 }
