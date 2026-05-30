@@ -30,7 +30,7 @@ public final class MinestomContext extends SimpleContext {
         return MinecraftServer.getBrandName();
     }
 
-    public static final class Factory extends FastStatsContextFactory<MinestomContext> {
+    public static final class Factory extends FastStatsContextFactory<MinestomContext, Factory> {
         private final @Token String token;
 
         public Factory(@Token final String token) {

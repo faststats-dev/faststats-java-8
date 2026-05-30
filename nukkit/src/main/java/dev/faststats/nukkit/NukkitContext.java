@@ -40,7 +40,7 @@ public final class NukkitContext extends SimpleContext {
         return plugin.getName();
     }
 
-    public static final class Factory extends FastStatsContextFactory<NukkitContext> {
+    public static final class Factory extends FastStatsContextFactory<NukkitContext, Factory> {
         private final PluginBase plugin;
         private final @Token String token;
 
