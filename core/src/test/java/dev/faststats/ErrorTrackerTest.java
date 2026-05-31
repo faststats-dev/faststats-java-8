@@ -1,6 +1,5 @@
 package dev.faststats;
 
-import com.google.gson.JsonObject;
 import org.junit.jupiter.api.Test;
 
 import java.net.URL;
@@ -10,8 +9,9 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ErrorTrackerTest {
@@ -343,12 +343,12 @@ public class ErrorTrackerTest {
 
     @Test
     public void errorTrackerServiceRequiresGlobalTracker() {
-        final var factory = new SimpleErrorTrackerService.Factory(context.errorTrackingSink());
+        final var factory = new SimpleErrorTrackerService.Factory(context);
         assertThrows(IllegalStateException.class, factory::create);
     }
 
     @Test
-    public void errorTrackerServiceSerializesGlobalAttributes() throws ReflectiveOperationException {
+    public void errorTrackerServiceSerializesGlobalAttributes() {
         final var tracker = (SimpleErrorTracker) ErrorTracker.contextUnaware();
         final var context = new MockContext.Factory()
                 .errorTrackerService(factory -> factory
@@ -361,9 +361,11 @@ public class ErrorTrackerTest {
                 .create();
         tracker.trackError("with global attributes");
 
-        final var method = ErrorTrackingSink.class.getDeclaredMethod("createData");
-        method.setAccessible(true);
-        final var data = (JsonObject) method.invoke(context.errorTrackingSink());
+        final var service = context.errorTrackerService()
+                .map(SimpleErrorTrackerService.class::cast)
+                .orElseThrow();
+        final var data = service.createData();
+        assertNotNull(data);
         final var globalContext = data.getAsJsonObject("context");
 
         assertEquals("startup", globalContext.get("stage").getAsString());

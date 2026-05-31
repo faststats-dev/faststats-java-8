@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import dev.faststats.internal.Logger;
 import dev.faststats.internal.LoggerFactory;
+import org.jetbrains.annotations.VisibleForTesting;
 import org.jspecify.annotations.Nullable;
 
 import java.io.ByteArrayOutputStream;
@@ -187,7 +188,8 @@ final class SimpleErrorTrackerService implements ErrorTrackerService {
         }
     }
 
-    private @Nullable JsonObject createData() {
+    @VisibleForTesting
+    public @Nullable JsonObject createData() {
         if (errorTrackers.isEmpty() && globalErrorTracker.getData().isEmpty()) return null;
 
         final var data = new JsonObject();
