@@ -47,16 +47,9 @@ final class SimpleErrorTrackerService implements ErrorTrackerService {
     private static final ThreadLocal<Boolean> DISPATCHING = ThreadLocal.withInitial(() -> false);
     private static Thread.@Nullable UncaughtExceptionHandler originalHandler;
 
-    SimpleErrorTrackerService(
-            final SimpleContext context,
-            final ErrorTracker globalErrorTracker
-    ) {
-        // todo: don't even let the user provide anything else
-        if (!(globalErrorTracker instanceof final SimpleErrorTracker tracker)) {
-            throw new IllegalArgumentException("Unsupported error tracker implementation: " + globalErrorTracker.getClass().getName());
-        }
+    SimpleErrorTrackerService(final SimpleContext context, final ErrorTracker globalErrorTracker) {
         this.context = context;
-        this.globalErrorTracker = tracker;
+        this.globalErrorTracker = ((SimpleErrorTracker) globalErrorTracker);
         startErrorSubmission();
     }
 
@@ -67,11 +60,7 @@ final class SimpleErrorTrackerService implements ErrorTrackerService {
 
     @Override
     public ErrorTrackerService registerErrorTracker(final ErrorTracker errorTracker) {
-        // todo: the class is sealed this check will always succeed, cast directly
-        if (!(errorTracker instanceof final SimpleErrorTracker tracker)) {
-            throw new IllegalArgumentException("Unsupported error tracker implementation: " + errorTracker.getClass().getName());
-        }
-        errorTrackers.add(tracker);
+        errorTrackers.add(((SimpleErrorTracker) errorTracker));
         startErrorSubmission();
         return this;
     }
@@ -258,5 +247,4 @@ final class SimpleErrorTrackerService implements ErrorTrackerService {
                 TimeUnit.MILLISECONDS
         );
     }
-
 }

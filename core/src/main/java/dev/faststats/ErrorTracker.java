@@ -63,7 +63,7 @@ public sealed interface ErrorTracker permits SimpleErrorTracker {
      */
     @Contract(pure = true)
     Attributes getAttributes();
-    
+
     /**
      * Tracks a handled  error.
      *

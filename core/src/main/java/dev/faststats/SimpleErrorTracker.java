@@ -49,7 +49,6 @@ final class SimpleErrorTracker implements ErrorTracker {
                 return reports != null ? reports + 1 : 1;
             });
         } catch (final NoClassDefFoundError ignored) {
-            // todo: add logging
         }
         return trackedError;
     }

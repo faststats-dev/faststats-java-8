@@ -245,9 +245,9 @@ public abstract class SimpleMetrics implements Metrics {
     }
 
     public abstract static class Factory implements Metrics.Factory {
+        private @Nullable Runnable flush;
         private final Set<Metric<?>> metrics = new HashSet<>(0);
         protected final SimpleContext context;
-        private @Nullable Runnable flush;
 
         protected Factory(final SimpleContext context) {
             this.context = context;
