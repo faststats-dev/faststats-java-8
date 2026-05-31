@@ -15,7 +15,6 @@ import java.net.http.HttpConnectTimeoutException;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.Executors;
@@ -38,7 +37,6 @@ final class ErrorTrackingSink {
     final Set<SimpleErrorTracker> errorTrackers = new CopyOnWriteArraySet<>();
     final Set<ScheduledFuture<?>> submissionJobs = new CopyOnWriteArraySet<>();
 
-    private volatile @Nullable SimpleErrorTracker internalErrorTracker;
     private volatile @Nullable ScheduledExecutorService submissionScheduler;
     private volatile @Nullable ScheduledFuture<?> errorSubmissionJob;
 
@@ -156,8 +154,8 @@ final class ErrorTrackingSink {
     }
 
     private @Nullable JsonObject createData() {
-        final var internal = internalErrorTracker;
-        if (internal == null && errorTrackers.isEmpty()) return null;
+        final var service = context.errorTrackerService().orElse(null);
+        if (service == null && errorTrackers.isEmpty()) return null;
 
         final var data = new JsonObject();
         context.getSdkInfo().getBuildId().ifPresent(id -> data.addProperty("buildId", id));
@@ -171,18 +169,21 @@ final class ErrorTrackingSink {
             final var simpleMetrics = (SimpleMetrics) metrics;
             simpleMetrics.appendData(defaultContext);
         });
+        if (service != null) service.getAttributes().ifPresent(attributes -> attributes.forEachPrimitive(defaultContext::add));
         data.add("context", defaultContext);
 
         final var errors = new JsonArray();
-        if (internal != null) errors.addAll(internal.getData());
+        if (service != null) errors.addAll(((SimpleErrorTracker) service.globalErrorTracker()).getData());
         errorTrackers.forEach(tracker -> errors.addAll(tracker.getData()));
         data.add("errors", errors);
         return data;
     }
 
     void clear() {
-        final var internal = internalErrorTracker;
-        if (internal != null) internal.clear();
+        context.errorTrackerService()
+                .map(ErrorTrackerService::globalErrorTracker)
+                .map(SimpleErrorTracker.class::cast)
+                .ifPresent(SimpleErrorTracker::clear);
         errorTrackers.forEach(SimpleErrorTracker::clear);
     }
 
@@ -201,24 +202,6 @@ final class ErrorTrackingSink {
     void unregisterSubmission(final ScheduledFuture<?> future) {
         future.cancel(false);
         submissionJobs.remove(future);
-    }
-
-    Optional<ErrorTracker> internalErrorTracker() {
-        return Optional.ofNullable(internalErrorTracker);
-    }
-
-    void setInternalErrorTracker(final ErrorTracker errorTracker) {
-        if (!(errorTracker instanceof final SimpleErrorTracker tracker)) {
-            throw new IllegalArgumentException("Unsupported error tracker implementation: " + errorTracker.getClass().getName());
-        }
-        internalErrorTracker = tracker;
-        startErrorSubmission();
-    }
-
-    TrackedError trackInternalError(final Throwable error) {
-        final var tracker = internalErrorTracker;
-        if (tracker == null) return new SimpleTrackedError(error);
-        return tracker.trackError(error);
     }
 
     boolean isSubmissionSchedulerRunning() {

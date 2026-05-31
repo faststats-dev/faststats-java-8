@@ -11,7 +11,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public final class AnonymizationTest {
     private final SimpleErrorTracker tracker = (SimpleErrorTracker) ErrorTracker.contextUnaware();
-    private final FastStatsContext context = new MockContext.Factory(tracker)
+    private final FastStatsContext context = new MockContext.Factory()
+            .errorTrackerService(factory -> factory.globalErrorTracker(tracker).create())
             .metrics(Metrics.Factory::create)
             .create();
 

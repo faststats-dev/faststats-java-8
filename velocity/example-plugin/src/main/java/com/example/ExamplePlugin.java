@@ -23,7 +23,7 @@ public class ExamplePlugin {
     public ExamplePlugin(final VelocityContext.Builder contextBuilder) {
         this.context = contextBuilder
                 .token("YOUR_TOKEN_HERE")
-                .errorTracker(ERROR_TRACKER)
+                .errorTrackerService(factory -> factory.globalErrorTracker(ERROR_TRACKER).create())
                 // .metrics(Metrics.Factory::create) // Define a minimal metrics instance without any custom metrics
                 .metrics(factory -> factory
                         // Custom metrics require a corresponding data source in your project settings

@@ -14,6 +14,6 @@ record PaperEventListener(Plugin plugin, SimpleContext context) implements Liste
         if (!(event.getException() instanceof final ServerPluginException exception)) return;
         if (!exception.getResponsiblePlugin().equals(plugin)) return;
         final var report = exception.getCause() != null ? exception.getCause() : exception;
-        context.errorTracker().ifPresent(tracker -> tracker.trackError(report));
+        context.errorTrackerService().ifPresent(service -> service.globalErrorTracker().trackError(report));
     }
 }

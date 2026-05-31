@@ -16,20 +16,22 @@ import java.util.function.Function;
  * @since 0.24.0
  */
 public abstract class FastStatsContextFactory<C extends SimpleContext, F extends FastStatsContextFactory<C, F>> {
-    private @Nullable ErrorTracker errorTracker;
     private @Nullable Function<Metrics.Factory, Metrics> metrics = null;
     private @Nullable Function<FeatureFlagService.Factory, FeatureFlagService> featureFlagService;
+    private @Nullable Function<ErrorTrackerService.Factory, ErrorTrackerService> errorTrackerService;
 
     /**
-     * Sets the single global/internal error tracker for the context created by this factory.
+     * Configures and creates the single error tracker service instance for the context.
      *
-     * @param errorTracker the global/internal error tracker
+     * @param errorTrackerService a function that receives a new service factory and returns the built service instance
      * @return this factory
      * @since 0.24.0
      */
     @Contract(value = "_ -> this", mutates = "this")
-    public F errorTracker(final ErrorTracker errorTracker) {
-        this.errorTracker = errorTracker;
+    public F errorTrackerService(
+            final Function<ErrorTrackerService.Factory, ErrorTrackerService> errorTrackerService
+    ) {
+        this.errorTrackerService = errorTrackerService;
         return self();
     }
 
@@ -70,12 +72,12 @@ public abstract class FastStatsContextFactory<C extends SimpleContext, F extends
     @Contract(value = " -> new", mutates = "io")
     public final C create() {
         final var context = createContext();
-        if (errorTracker != null)
-            context.setErrorTracker(errorTracker);
         if (metrics != null)
             context.setMetrics(metrics.apply(context.metricsFactory()));
         if (featureFlagService != null)
             context.setFeatureFlagService(featureFlagService.apply(context.featureFlagServiceFactory()));
+        if (errorTrackerService != null)
+            context.setErrorTrackerService(errorTrackerService.apply(context.errorTrackerServiceFactory()));
         return context;
     }
 

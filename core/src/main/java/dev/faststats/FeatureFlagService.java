@@ -92,6 +92,7 @@ public sealed interface FeatureFlagService permits SimpleFeatureFlagService {
      * @since 0.24.0
      */
     @Contract(pure = true)
+    // todo: always provide an attributes instance
     Optional<Attributes> getAttributes();
 
     /**

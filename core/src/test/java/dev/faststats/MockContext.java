@@ -1,17 +1,10 @@
 package dev.faststats;
 
-import org.jspecify.annotations.Nullable;
-
 import java.util.UUID;
 
 public final class MockContext extends SimpleContext {
     private MockContext() throws IllegalArgumentException {
-        this(null);
-    }
-
-    private MockContext(@Nullable final ErrorTracker internalErrorTracker) throws IllegalArgumentException {
         super(new MockConfig(UUID.randomUUID()), "core:test", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
-        if (internalErrorTracker != null) setErrorTracker(internalErrorTracker);
     }
 
     @Override
@@ -52,19 +45,9 @@ public final class MockContext extends SimpleContext {
     }
 
     public static final class Factory extends FastStatsContextFactory<MockContext, Factory> {
-        private final @Nullable ErrorTracker internalErrorTracker;
-
-        public Factory() {
-            this(null);
-        }
-
-        public Factory(@Nullable final ErrorTracker internalErrorTracker) {
-            this.internalErrorTracker = internalErrorTracker;
-        }
-
         @Override
         protected MockContext createContext() {
-            return new MockContext(internalErrorTracker);
+            return new MockContext();
         }
     }
 }

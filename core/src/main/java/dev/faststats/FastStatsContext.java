@@ -8,7 +8,8 @@ import java.util.Optional;
  * Shared FastStats context.
  * <p>
  * Platform-specific contexts should extend this class to provide a shared
- * configuration, token, metrics, and feature flag service for their environment.
+ * configuration, token, metrics, feature flag service, and error tracker service
+ * for their environment.
  *
  * @since 0.24.0
  */
@@ -51,26 +52,13 @@ public sealed interface FastStatsContext permits SimpleContext {
     Optional<FeatureFlagService> featureFlagService();
 
     /**
-     * Get the registered internal/global error tracker, if one was configured.
+     * Gets the error tracker service bound to this context.
      *
-     * @return the internal/global error tracker
+     * @return the context error tracker service, if one was configured
      * @since 0.24.0
      */
     @Contract(pure = true)
-    Optional<ErrorTracker> errorTracker();
-
-    /**
-     * Registers an additional error tracker for submission with this context.
-     * <p>
-     * The global/internal tracker returned by {@link #errorTracker()} is configured
-     * by the context factory. Additional trackers registered here are submitted by
-     * the same context, but are not used for internal FastStats errors.
-     *
-     * @param errorTracker the additional error tracker
-     * @return this context
-     * @since 0.24.0
-     */
-    FastStatsContext registerErrorTracker(ErrorTracker errorTracker);
+    Optional<ErrorTrackerService> errorTrackerService();
 
     /**
      * Performs additional post-startup tasks for configured context services.

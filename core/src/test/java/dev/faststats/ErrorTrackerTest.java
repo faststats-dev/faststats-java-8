@@ -1,5 +1,6 @@
 package dev.faststats;
 
+import com.google.gson.JsonObject;
 import org.junit.jupiter.api.Test;
 
 import java.net.URL;
@@ -9,12 +10,15 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ErrorTrackerTest {
     private final SimpleErrorTracker tracker = (SimpleErrorTracker) ErrorTracker.contextUnaware();
-    private final MockContext context = new MockContext.Factory(tracker).create();
+    private final MockContext context = new MockContext.Factory()
+            .errorTrackerService(factory -> factory.globalErrorTracker(tracker).create())
+            .create();
 
     @Test
     public void sameClassLoader() {
@@ -335,6 +339,36 @@ public class ErrorTrackerTest {
         assertEquals("startup", context.get("stage").getAsString());
         assertEquals(2, context.get("attempt").getAsInt());
         assertTrue(context.get("retrying").getAsBoolean());
+    }
+
+    @Test
+    public void errorTrackerServiceRequiresGlobalTracker() {
+        final var factory = new SimpleErrorTrackerService.Factory(context.errorTrackingSink());
+        assertThrows(IllegalStateException.class, factory::create);
+    }
+
+    @Test
+    public void errorTrackerServiceSerializesGlobalAttributes() throws ReflectiveOperationException {
+        final var tracker = (SimpleErrorTracker) ErrorTracker.contextUnaware();
+        final var context = new MockContext.Factory()
+                .errorTrackerService(factory -> factory
+                        .globalErrorTracker(tracker)
+                        .attributes(Attributes.create()
+                                .put("stage", "startup")
+                                .put("attempt", 2)
+                                .put("retrying", true))
+                        .create())
+                .create();
+        tracker.trackError("with global attributes");
+
+        final var method = ErrorTrackingSink.class.getDeclaredMethod("createData");
+        method.setAccessible(true);
+        final var data = (JsonObject) method.invoke(context.errorTrackingSink());
+        final var globalContext = data.getAsJsonObject("context");
+
+        assertEquals("startup", globalContext.get("stage").getAsString());
+        assertEquals(2, globalContext.get("attempt").getAsInt());
+        assertTrue(globalContext.get("retrying").getAsBoolean());
     }
 
     private RuntimeException createStableError() {

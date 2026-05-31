@@ -22,9 +22,11 @@ public final class ErrorTrackerExample {
             .anonymize("([?&](?:api_?key|token|secret)=)[^&\\s]+", "$1[redacted]");
 
     public static final FastStatsContext CONTEXT = getContextFactory()
-            .errorTracker(CONTEXT_AWARE) // Set the global/internal error tracker
-            .create()
-            .registerErrorTracker(CONTEXT_UNAWARE); // Register an additional tracker for submission
+            .errorTrackerService(factory -> factory
+                    .globalErrorTracker(CONTEXT_AWARE) // Set the global/internal error tracker
+                    .create()
+                    .registerErrorTracker(CONTEXT_UNAWARE)) // Register an additional tracker for submission
+            .create();
 
     public static void manualTracking() {
         try {

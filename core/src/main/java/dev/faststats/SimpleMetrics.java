@@ -113,10 +113,6 @@ public abstract class SimpleMetrics implements Metrics {
         return submissionJob != null && !submissionJob.isCancelled();
     }
 
-    protected final TrackedError trackError(final Throwable error) {
-        return context.trackInternalError(error);
-    }
-
     // todo: improve logging to be less cluttered
     @VisibleForTesting
     public boolean submit() {
@@ -195,7 +191,7 @@ public abstract class SimpleMetrics implements Metrics {
                 metric.getData().ifPresent(element -> metrics.add(metric.getId(), element));
             } catch (final Throwable t) {
                 logger.error("Failed to append custom metric data: %s", t, metric.getId());
-                context.trackInternalError(t);
+                context.errorTrackerService().ifPresent(service -> service.globalErrorTracker().trackError(t));
             }
         });
     }

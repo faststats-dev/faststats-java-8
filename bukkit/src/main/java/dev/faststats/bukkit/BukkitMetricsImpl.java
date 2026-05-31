@@ -77,7 +77,7 @@ final class BukkitMetricsImpl extends SimpleMetrics implements BukkitMetrics {
             return plugin.getServer().getOnlinePlayers().size();
         } catch (final Throwable t) {
             logger.error("Failed to get player count", t);
-            trackError(t);
+            context.errorTrackerService().ifPresent(service -> service.globalErrorTracker().trackError(t));
             return 0;
         }
     }

@@ -13,7 +13,7 @@ public class ExamplePlugin extends JavaPlugin {
     private final AtomicInteger gameCount = new AtomicInteger();
 
     private final HytaleContext context = new HytaleContext.Factory(this, "YOUR_TOKEN_HERE")
-            .errorTracker(ERROR_TRACKER)
+            .errorTrackerService(factory -> factory.globalErrorTracker(ERROR_TRACKER).create())
             // .metrics(Metrics.Factory::create) // Define a minimal metrics instance without any custom metrics
             .metrics(factory -> factory
                     // Custom metrics require a corresponding data source in your project settings

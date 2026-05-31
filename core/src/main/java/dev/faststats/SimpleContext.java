@@ -17,6 +17,7 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
     private final SdkInfo sdkInfo;
     private @Nullable Metrics metrics;
     private @Nullable FeatureFlagService featureFlagService;
+    private @Nullable ErrorTrackerService errorTrackerService;
 
     /**
      * Creates a new context that stores the shared configuration and token for all FastStats services.
@@ -92,6 +93,11 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
         return new SimpleFeatureFlagService.Factory(config, token);
     }
 
+    @Contract(value = " -> new", pure = true)
+    protected ErrorTrackerService.Factory errorTrackerServiceFactory() {
+        return new SimpleErrorTrackerService.Factory(errorTrackingSink);
+    }
+
     final void setMetrics(final Metrics metrics) {
         this.metrics = metrics;
     }
@@ -102,19 +108,13 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
 
     @Override
     @Contract(pure = true)
-    public final Optional<ErrorTracker> errorTracker() {
-        return errorTrackingSink.internalErrorTracker();
+    public final Optional<ErrorTrackerService> errorTrackerService() {
+        return Optional.ofNullable(errorTrackerService);
     }
 
-    final void setErrorTracker(final ErrorTracker errorTracker) {
-        errorTrackingSink.setInternalErrorTracker(errorTracker);
-    }
-
-    @Override
-    public final SimpleContext registerErrorTracker(final ErrorTracker tracker) {
-        errorTrackingSink.errorTrackers.add((SimpleErrorTracker) tracker);
-        errorTrackingSink.startErrorSubmission();
-        return this;
+    // todo: mutation sucks :)
+    final void setErrorTrackerService(final ErrorTrackerService errorTrackerService) {
+        this.errorTrackerService = errorTrackerService;
     }
 
     @Override
@@ -136,9 +136,5 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
 
     ErrorTrackingSink errorTrackingSink() {
         return errorTrackingSink;
-    }
-
-    TrackedError trackInternalError(final Throwable error) {
-        return errorTrackingSink.trackInternalError(error);
     }
 }
