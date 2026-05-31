@@ -47,6 +47,9 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
         this.errorTrackerService = factory.errorTracker != null ? new SimpleErrorTrackerService(this, factory.errorTracker) : null;
         this.featureFlagService = factory.featureFlagService != null ? factory.featureFlagService.apply(new SimpleFeatureFlagService.Factory(config, token)) : null;
 
+        if (metrics == null && errorTrackerService == null && featureFlagService == null)
+            throw new IllegalStateException("Context created without any service attached, was this intentional?");
+
         final var features = new HashSet<String>(3);
         features.add("metrics=" + (metrics != null ? "yes" : "no"));
         features.add("error-tracking=" + (errorTrackerService != null ? "yes" : "no"));
