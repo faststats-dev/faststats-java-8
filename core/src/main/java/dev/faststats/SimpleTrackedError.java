@@ -35,7 +35,7 @@ final class SimpleTrackedError implements TrackedError {
 
     @Override
     public Attributes attributes() {
-        return attributes;
+        return Attributes.copyOf(attributes);
     }
 
     @Override

@@ -37,12 +37,12 @@ public sealed interface TrackedError permits SimpleTrackedError {
     TrackedError handled(boolean handled);
 
     /**
-     * Returns the additional error attributes.
+     * Returns a copy of the additional error attributes.
      *
-     * @return the additional error attributes
+     * @return a copy of the additional error attributes
      * @since 0.24.0
      */
-    @Contract(pure = true)
+    @Contract(value = " -> new", pure = true)
     Attributes attributes();
 
     /**
