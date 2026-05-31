@@ -20,15 +20,6 @@ public sealed interface ErrorTrackerService permits SimpleErrorTrackerService {
     ErrorTracker globalErrorTracker();
 
     /**
-     * Returns the global error context attributes configured for this service.
-     *
-     * @return the global error context attributes
-     * @since 0.24.0
-     */
-    @Contract(pure = true)
-    Attributes getAttributes(); // todo: move into error tracker itself
-
-    /**
      * Registers an additional error tracker for submission with this service.
      * <p>
      * Additional trackers registered here are submitted by the same context, but are not

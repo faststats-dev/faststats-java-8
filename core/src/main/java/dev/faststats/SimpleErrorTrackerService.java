@@ -35,7 +35,6 @@ final class SimpleErrorTrackerService implements ErrorTrackerService {
     private final SimpleContext context;
     private final URI url = getErrorTrackerServerUrl();
     private final SimpleErrorTracker globalErrorTracker;
-    private final Attributes attributes;
 
     final Set<SimpleErrorTracker> errorTrackers = new CopyOnWriteArraySet<>();
     final Set<ScheduledFuture<?>> submissionJobs = new CopyOnWriteArraySet<>();
@@ -50,8 +49,7 @@ final class SimpleErrorTrackerService implements ErrorTrackerService {
 
     SimpleErrorTrackerService(
             final SimpleContext context,
-            final ErrorTracker globalErrorTracker,
-            final Attributes attributes
+            final ErrorTracker globalErrorTracker
     ) {
         // todo: don't even let the user provide anything else
         if (!(globalErrorTracker instanceof final SimpleErrorTracker tracker)) {
@@ -59,18 +57,12 @@ final class SimpleErrorTrackerService implements ErrorTrackerService {
         }
         this.context = context;
         this.globalErrorTracker = tracker;
-        this.attributes = attributes;
         startErrorSubmission();
     }
 
     @Override
     public ErrorTracker globalErrorTracker() {
         return globalErrorTracker;
-    }
-
-    @Override
-    public Attributes getAttributes() {
-        return attributes;
     }
 
     @Override
@@ -190,7 +182,8 @@ final class SimpleErrorTrackerService implements ErrorTrackerService {
 
     @VisibleForTesting
     public @Nullable JsonObject createData() {
-        if (errorTrackers.isEmpty() && globalErrorTracker.getData().isEmpty()) return null;
+        final var globalErrorTrackerData = globalErrorTracker.getData(false);
+        if (errorTrackers.isEmpty() && globalErrorTrackerData.isEmpty()) return null;
 
         final var data = new JsonObject();
         context.getSdkInfo().getBuildId().ifPresent(id -> data.addProperty("buildId", id));
@@ -204,12 +197,12 @@ final class SimpleErrorTrackerService implements ErrorTrackerService {
             final var simpleMetrics = (SimpleMetrics) metrics;
             simpleMetrics.appendData(defaultContext);
         });
-        attributes.forEachPrimitive(defaultContext::add);
+        globalErrorTracker.getAttributes().forEachPrimitive(defaultContext::add);
         data.add("context", defaultContext);
 
         final var errors = new JsonArray();
-        errors.addAll(globalErrorTracker.getData());
-        errorTrackers.forEach(tracker -> errors.addAll(tracker.getData()));
+        errors.addAll(globalErrorTrackerData);
+        errorTrackers.forEach(tracker -> errors.addAll(tracker.getFullData()));
         data.add("errors", errors);
         return data;
     }

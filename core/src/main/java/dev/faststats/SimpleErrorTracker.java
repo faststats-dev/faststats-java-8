@@ -19,6 +19,7 @@ import java.util.regex.Pattern;
 
 final class SimpleErrorTracker implements ErrorTracker {
     private final Map<TrackedError, Integer> reports = new ConcurrentHashMap<>();
+    private final Attributes attributes = Attributes.empty();
 
     private final Map<Class<? extends Throwable>, Set<Pattern>> ignoredTypedPatterns = new ConcurrentHashMap<>();
     private final Set<Class<? extends Throwable>> ignoredTypes = new CopyOnWriteArraySet<>();
@@ -28,6 +29,11 @@ final class SimpleErrorTracker implements ErrorTracker {
     private volatile @Nullable BiConsumer<@Nullable ClassLoader, Throwable> errorEvent;
     private volatile @Nullable ClassLoader attachedLoader;
     private volatile boolean contextAttached;
+
+    @Override
+    public Attributes getAttributes() {
+        return attributes;
+    }
 
     @Override
     public TrackedError trackError(final String message) {
@@ -88,10 +94,15 @@ final class SimpleErrorTracker implements ErrorTracker {
     }
 
     @VisibleForTesting
-    public JsonArray getData() {
+    public JsonArray getFullData() {
+        return getData(true);
+    }
+
+    JsonArray getData(final boolean includeTrackerAttributes) {
         final var report = new JsonArray(reports.size());
         reports.forEach((error, count) -> {
-            final var compiled = ErrorHelper.compile(error, null, anonymizationEntries);
+            final var attributes = includeTrackerAttributes ? this.attributes : null;
+            final var compiled = ErrorHelper.compile(error, null, anonymizationEntries, attributes);
             if (count > 1) compiled.addProperty("count", count);
             report.add(compiled);
         });

@@ -55,7 +55,14 @@ public sealed interface ErrorTracker permits SimpleErrorTracker {
         return new SimpleErrorTracker();
     }
 
-    // todo: add error tracker wide attributes
+    /**
+     * Returns the global error context attributes configured for this tracker.
+     *
+     * @return the global error context attributes
+     * @since 0.24.0
+     */
+    @Contract(pure = true)
+    Attributes getAttributes();
     
     /**
      * Tracks a handled  error.

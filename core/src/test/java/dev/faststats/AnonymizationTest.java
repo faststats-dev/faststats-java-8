@@ -17,7 +17,7 @@ public final class AnonymizationTest {
             .create();
 
     private JsonObject getError() {
-        return tracker.getData().get(0).getAsJsonObject();
+        return tracker.getFullData().get(0).getAsJsonObject();
     }
 
     private String getErrorMessage() {

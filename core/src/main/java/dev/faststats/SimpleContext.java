@@ -124,6 +124,6 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
     }
 
     final void setErrorTrackerService(final ErrorTracker errorTracker) {
-        this.errorTrackerService = new SimpleErrorTrackerService(this, errorTracker, Attributes.empty());
+        this.errorTrackerService = new SimpleErrorTrackerService(this, errorTracker);
     }
 }
