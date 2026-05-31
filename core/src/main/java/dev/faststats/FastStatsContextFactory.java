@@ -18,20 +18,18 @@ import java.util.function.Function;
 public abstract class FastStatsContextFactory<C extends SimpleContext, F extends FastStatsContextFactory<C, F>> {
     private @Nullable Function<Metrics.Factory, Metrics> metrics = null;
     private @Nullable Function<FeatureFlagService.Factory, FeatureFlagService> featureFlagService;
-    private @Nullable Function<ErrorTrackerService.Factory, ErrorTrackerService> errorTrackerService;
+    private @Nullable ErrorTracker errorTracker;
 
     /**
-     * Configures and creates the single error tracker service instance for the context.
+     * Configures the global/internal error tracker for the context.
      *
-     * @param errorTrackerService a function that receives a new service factory and returns the built service instance
+     * @param errorTracker the global/internal error tracker
      * @return this factory
      * @since 0.24.0
      */
     @Contract(value = "_ -> this", mutates = "this")
-    public F errorTrackerService(
-            final Function<ErrorTrackerService.Factory, ErrorTrackerService> errorTrackerService
-    ) {
-        this.errorTrackerService = errorTrackerService;
+    public F errorTrackerService(final ErrorTracker errorTracker) {
+        this.errorTracker = errorTracker;
         return self();
     }
 
@@ -69,6 +67,7 @@ public abstract class FastStatsContextFactory<C extends SimpleContext, F extends
      * @return the configured context
      * @since 0.24.0
      */
+    // todo: mutation sucks, move factory into context
     @Contract(value = " -> new", mutates = "io")
     public final C create() {
         final var context = createContext();
@@ -76,8 +75,8 @@ public abstract class FastStatsContextFactory<C extends SimpleContext, F extends
             context.setMetrics(metrics.apply(context.metricsFactory()));
         if (featureFlagService != null)
             context.setFeatureFlagService(featureFlagService.apply(context.featureFlagServiceFactory()));
-        if (errorTrackerService != null)
-            context.setErrorTrackerService(errorTrackerService.apply(context.errorTrackerServiceFactory()));
+        if (errorTracker != null)
+            context.setErrorTrackerService(errorTracker);
         return context;
     }
 

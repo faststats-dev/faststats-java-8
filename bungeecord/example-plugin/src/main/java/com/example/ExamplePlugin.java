@@ -12,7 +12,7 @@ public class ExamplePlugin extends Plugin {
     private final AtomicInteger gameCount = new AtomicInteger();
 
     private final BungeeContext context = new BungeeContext.Factory(this, "YOUR_TOKEN_HERE")
-            .errorTrackerService(factory -> factory.globalErrorTracker(ERROR_TRACKER).create())
+            .errorTrackerService(ERROR_TRACKER)
             // .metrics(Metrics.Factory::create) // Define a minimal metrics instance without any custom metrics
             .metrics(factory -> factory
                     // Custom metrics require a corresponding data source in your project settings

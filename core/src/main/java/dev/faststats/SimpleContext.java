@@ -13,6 +13,7 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
     private final Config config;
     private final @Token String token;
     private final SdkInfo sdkInfo;
+
     private @Nullable Metrics metrics;
     private @Nullable FeatureFlagService featureFlagService;
     private @Nullable ErrorTrackerService errorTrackerService;
@@ -91,28 +92,10 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
         return new SimpleFeatureFlagService.Factory(config, token);
     }
 
-    @Contract(value = " -> new", pure = true)
-    protected ErrorTrackerService.Factory errorTrackerServiceFactory() {
-        return new SimpleErrorTrackerService.Factory(this);
-    }
-
-    final void setMetrics(final Metrics metrics) {
-        this.metrics = metrics;
-    }
-
-    final void setFeatureFlagService(final FeatureFlagService featureFlagService) {
-        this.featureFlagService = featureFlagService;
-    }
-
     @Override
     @Contract(pure = true)
     public final Optional<ErrorTrackerService> errorTrackerService() {
         return Optional.ofNullable(errorTrackerService);
-    }
-
-    // todo: mutation sucks :)
-    final void setErrorTrackerService(final ErrorTrackerService errorTrackerService) {
-        this.errorTrackerService = errorTrackerService;
     }
 
     @Override
@@ -130,5 +113,17 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
     @Contract(pure = true)
     public SdkInfo getSdkInfo() {
         return sdkInfo;
+    }
+
+    final void setMetrics(final Metrics metrics) {
+        this.metrics = metrics;
+    }
+
+    final void setFeatureFlagService(final FeatureFlagService featureFlagService) {
+        this.featureFlagService = featureFlagService;
+    }
+
+    final void setErrorTrackerService(final ErrorTracker errorTracker) {
+        this.errorTrackerService = new SimpleErrorTrackerService(this, errorTracker, Attributes.empty());
     }
 }

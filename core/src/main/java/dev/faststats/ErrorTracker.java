@@ -55,6 +55,8 @@ public sealed interface ErrorTracker permits SimpleErrorTracker {
         return new SimpleErrorTracker();
     }
 
+    // todo: add error tracker wide attributes
+    
     /**
      * Tracks a handled  error.
      *

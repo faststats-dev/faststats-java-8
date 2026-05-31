@@ -266,32 +266,4 @@ final class SimpleErrorTrackerService implements ErrorTrackerService {
         );
     }
 
-    static final class Factory implements ErrorTrackerService.Factory {
-        private final SimpleContext context;
-        private @Nullable ErrorTracker globalErrorTracker;
-        private @Nullable Attributes attributes;
-
-        Factory(final SimpleContext context) {
-            this.context = context;
-        }
-
-        @Override
-        public ErrorTrackerService.Factory globalErrorTracker(final ErrorTracker errorTracker) {
-            this.globalErrorTracker = errorTracker;
-            return this;
-        }
-
-        @Override
-        public ErrorTrackerService.Factory attributes(final Attributes attributes) {
-            this.attributes = attributes;
-            return this;
-        }
-
-        @Override
-        public ErrorTrackerService create() throws IllegalStateException {
-            if (globalErrorTracker == null) throw new IllegalStateException("A global error tracker is required");
-            final var attributes = this.attributes != null ? this.attributes : Attributes.empty();
-            return new SimpleErrorTrackerService(context, globalErrorTracker, attributes);
-        }
-    }
 }

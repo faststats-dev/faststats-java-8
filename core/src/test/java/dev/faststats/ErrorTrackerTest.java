@@ -11,13 +11,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ErrorTrackerTest {
     private final SimpleErrorTracker tracker = (SimpleErrorTracker) ErrorTracker.contextUnaware();
     private final MockContext context = new MockContext.Factory()
-            .errorTrackerService(factory -> factory.globalErrorTracker(tracker).create())
+            .errorTrackerService(tracker)
             .create();
 
     @Test
@@ -342,23 +341,15 @@ public class ErrorTrackerTest {
     }
 
     @Test
-    public void errorTrackerServiceRequiresGlobalTracker() {
-        final var factory = new SimpleErrorTrackerService.Factory(context);
-        assertThrows(IllegalStateException.class, factory::create);
-    }
-
-    @Test
     public void errorTrackerServiceSerializesGlobalAttributes() {
         final var tracker = (SimpleErrorTracker) ErrorTracker.contextUnaware();
         final var context = new MockContext.Factory()
-                .errorTrackerService(factory -> factory
-                        .globalErrorTracker(tracker)
-                        .attributes(Attributes.empty()
-                                .put("stage", "startup")
-                                .put("attempt", 2)
-                                .put("retrying", true))
-                        .create())
+                .errorTrackerService(tracker)
                 .create();
+        context.errorTrackerService().ifPresent(service -> service.getAttributes()
+                .put("stage", "startup")
+                .put("attempt", 2)
+                .put("retrying", true));
         tracker.trackError("with global attributes");
 
         final var service = context.errorTrackerService()

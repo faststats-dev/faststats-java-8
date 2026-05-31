@@ -26,7 +26,7 @@ public class ExampleMod implements ModInitializer {
                     .onFlush(() -> gameCount.set(0)) // reset game count on flush
 
                     .create())
-            .errorTrackerService(factory -> factory.globalErrorTracker(ERROR_TRACKER).create())
+            .errorTrackerService(ERROR_TRACKER)
             .create();
 
     @Override
