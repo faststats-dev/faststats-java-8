@@ -9,7 +9,7 @@ import java.util.Objects;
 import java.util.Set;
 
 final class SimpleTrackedError implements TrackedError {
-    private Attributes attributes = Attributes.create();
+    private Attributes attributes = Attributes.empty();
     private boolean handled = true;
     private final Throwable error;
 

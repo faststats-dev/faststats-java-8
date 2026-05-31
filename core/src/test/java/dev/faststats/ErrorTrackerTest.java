@@ -327,7 +327,7 @@ public class ErrorTrackerTest {
     public void trackedErrorSerializesProperties() {
         final var tracker = (SimpleErrorTracker) ErrorTracker.contextUnaware();
         final var error = tracker.trackError("with properties");
-        error.attributes(Attributes.create()
+        error.attributes(Attributes.empty()
                 .put("stage", "startup")
                 .put("attempt", 2)
                 .put("retrying", true));
@@ -353,7 +353,7 @@ public class ErrorTrackerTest {
         final var context = new MockContext.Factory()
                 .errorTrackerService(factory -> factory
                         .globalErrorTracker(tracker)
-                        .attributes(Attributes.create()
+                        .attributes(Attributes.empty()
                                 .put("stage", "startup")
                                 .put("attempt", 2)
                                 .put("retrying", true))

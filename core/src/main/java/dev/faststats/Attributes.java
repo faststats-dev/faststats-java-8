@@ -23,7 +23,7 @@ public sealed interface Attributes permits SimpleAttributes {
      * @since 0.24.0
      */
     @Contract(value = " -> new", pure = true)
-    static Attributes create() {
+    static Attributes empty() {
         return new SimpleAttributes(new ConcurrentHashMap<>());
     }
 

@@ -2,17 +2,15 @@ package dev.faststats;
 
 import org.jspecify.annotations.Nullable;
 
-import java.util.Optional;
-
 final class SimpleErrorTrackerService implements ErrorTrackerService {
     private final ErrorTrackingSink sink;
     private final SimpleErrorTracker globalErrorTracker;
-    private final @Nullable Attributes attributes;
+    private final Attributes attributes;
 
     SimpleErrorTrackerService(
             final ErrorTrackingSink sink,
             final ErrorTracker globalErrorTracker,
-            final @Nullable Attributes attributes
+            final Attributes attributes
     ) {
         // todo: don't even let the user provide anything else
         if (!(globalErrorTracker instanceof final SimpleErrorTracker tracker)) {
@@ -30,8 +28,8 @@ final class SimpleErrorTrackerService implements ErrorTrackerService {
     }
 
     @Override
-    public Optional<Attributes> getAttributes() {
-        return Optional.ofNullable(attributes);
+    public Attributes getAttributes() {
+        return attributes;
     }
 
     @Override
@@ -69,6 +67,7 @@ final class SimpleErrorTrackerService implements ErrorTrackerService {
         @Override
         public ErrorTrackerService create() throws IllegalStateException {
             if (globalErrorTracker == null) throw new IllegalStateException("A global error tracker is required");
+            final var attributes = this.attributes != null ? this.attributes : Attributes.empty();
             return new SimpleErrorTrackerService(sink, globalErrorTracker, attributes);
         }
     }

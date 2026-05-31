@@ -17,7 +17,6 @@ import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
 import java.util.Map;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
@@ -34,7 +33,7 @@ final class SimpleFeatureFlagService implements FeatureFlagService {
     private final UUID serverId;
 
     private final @Token String token;
-    private final @Nullable Attributes attributes;
+    private final Attributes attributes;
     private final Duration ttl;
 
     private final Map<String, CompletableFuture<?>> fetchesInProgress = new ConcurrentHashMap<>();
@@ -42,7 +41,7 @@ final class SimpleFeatureFlagService implements FeatureFlagService {
     SimpleFeatureFlagService(
             final Config config,
             final @Token String token,
-            final @Nullable Attributes attributes,
+            final Attributes attributes,
             final Duration ttl
     ) throws IllegalArgumentException {
         if (ttl.isNegative()) throw new IllegalArgumentException("TTL cannot be negative");
@@ -103,7 +102,7 @@ final class SimpleFeatureFlagService implements FeatureFlagService {
         requestBody.addProperty("key", flag.getId());
 
         final var attributes = new JsonObject();
-        if (this.attributes != null) this.attributes.forEachPrimitive(attributes::add);
+        this.attributes.forEachPrimitive(attributes::add);
         if (flag.attributes() != null) flag.attributes().forEachPrimitive(attributes::add);
         if (!attributes.isEmpty()) requestBody.add("attributes", attributes);
 
@@ -208,8 +207,8 @@ final class SimpleFeatureFlagService implements FeatureFlagService {
     }
 
     @Override
-    public Optional<Attributes> getAttributes() {
-        return Optional.ofNullable(attributes);
+    public Attributes getAttributes() {
+        return attributes;
     }
 
     @Override
@@ -249,6 +248,7 @@ final class SimpleFeatureFlagService implements FeatureFlagService {
 
         @Override
         public FeatureFlagService create() throws IllegalArgumentException {
+            final var attributes = this.attributes != null ? this.attributes : Attributes.empty();
             return new SimpleFeatureFlagService(config, token, attributes, ttl);
         }
     }

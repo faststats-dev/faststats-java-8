@@ -12,7 +12,7 @@ public final class FeatureFlagExample {
     public static final FastStatsContext CONTEXT = getContextFactory()
             // .featureFlagService(FeatureFlagService.Factory::create) // Define a feature flag service with default settings
             .featureFlagService(factory -> factory
-                    .attributes(Attributes.create() // Define global attributes
+                    .attributes(Attributes.empty() // Define global attributes
                             .put("version", "1.2.3")
                             .put("java_version", System.getProperty("java.version"))
                             .put("java_vendor", System.getProperty("java.vendor")))

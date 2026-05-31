@@ -169,7 +169,7 @@ final class ErrorTrackingSink {
             final var simpleMetrics = (SimpleMetrics) metrics;
             simpleMetrics.appendData(defaultContext);
         });
-        if (service != null) service.getAttributes().ifPresent(attributes -> attributes.forEachPrimitive(defaultContext::add));
+        if (service != null) service.getAttributes().forEachPrimitive(defaultContext::add);
         data.add("context", defaultContext);
 
         final var errors = new JsonArray();

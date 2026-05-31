@@ -3,7 +3,6 @@ package dev.faststats;
 import org.jetbrains.annotations.Contract;
 
 import java.time.Duration;
-import java.util.Optional;
 
 /**
  * A service for managing feature flags.
@@ -88,12 +87,11 @@ public sealed interface FeatureFlagService permits SimpleFeatureFlagService {
      * These attributes apply to every flag defined by the service and are
      * merged with any per-flag attributes supplied during definition.
      *
-     * @return the global targeting attributes, if configured
+     * @return the global targeting attributes
      * @since 0.24.0
      */
     @Contract(pure = true)
-    // todo: always provide an attributes instance
-    Optional<Attributes> getAttributes();
+    Attributes getAttributes();
 
     /**
      * Returns the cache time-to-live used for resolved flag values.

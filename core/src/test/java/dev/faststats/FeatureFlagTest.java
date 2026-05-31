@@ -2,7 +2,6 @@ package dev.faststats;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
-import org.jspecify.annotations.NullMarked;
 import org.jspecify.annotations.Nullable;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -102,11 +101,11 @@ public final class FeatureFlagTest {
     public void serviceAndFlagAttributesAreMergedInFetchRequest() throws Exception {
         server.enqueue(200, "{\"value\":true}");
 
-        final var serviceAttributes = Attributes.create()
+        final var serviceAttributes = Attributes.empty()
                 .put("region", "global")
                 .put("players", 20)
                 .put("premium", false);
-        final var flagAttributes = Attributes.create()
+        final var flagAttributes = Attributes.empty()
                 .put("region", "flag")
                 .put("beta", true);
         final var service = service(serviceAttributes, Duration.ofMinutes(5));
@@ -184,10 +183,10 @@ public final class FeatureFlagTest {
     }
 
     private static SimpleFeatureFlagService service(final Duration ttl) {
-        return service(null, ttl);
+        return service(Attributes.empty(), ttl);
     }
 
-    private static SimpleFeatureFlagService service(@Nullable final Attributes attributes, final Duration ttl) {
+    private static SimpleFeatureFlagService service(final Attributes attributes, final Duration ttl) {
         return new SimpleFeatureFlagService(new TestConfig(), "test-token", attributes, ttl);
     }
 

@@ -2,8 +2,6 @@ package dev.faststats;
 
 import org.jetbrains.annotations.Contract;
 
-import java.util.Optional;
-
 /**
  * A service for managing error trackers.
  * <p>
@@ -24,12 +22,11 @@ public sealed interface ErrorTrackerService permits SimpleErrorTrackerService {
     /**
      * Returns the global error context attributes configured for this service.
      *
-     * @return the global error context attributes, if configured
+     * @return the global error context attributes
      * @since 0.24.0
      */
     @Contract(pure = true)
-    // todo: always provide an attributes instance
-    Optional<Attributes> getAttributes();
+    Attributes getAttributes();
 
     /**
      * Registers an additional error tracker for submission with this service.
