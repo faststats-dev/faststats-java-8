@@ -1,6 +1,7 @@
 package dev.faststats.config;
 
 import dev.faststats.Config;
+import dev.faststats.internal.Logger;
 import dev.faststats.internal.LoggerFactory;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Contract;
@@ -29,6 +30,7 @@ public record SimpleConfig(
         boolean errorTracking,
         boolean firstRun
 ) implements Config {
+    private static final Logger logger = LoggerFactory.factory().getLogger(SimpleConfig.class);
     private static final int CONFIG_VERSION = 1;
 
     private static final String COMMENT = """
@@ -62,7 +64,7 @@ public record SimpleConfig(
     @Contract(mutates = "io")
     public static SimpleConfig read(final Path file) throws RuntimeException {
         final var properties = readOrEmpty(file);
-        final var firstRun = properties != null;
+        final var firstRun = properties == null;
         final var saveConfig = new AtomicBoolean(firstRun);
 
         final var serverId = parse(properties, saveConfig, "serverId", UUID::randomUUID, value -> {
@@ -76,9 +78,14 @@ public record SimpleConfig(
         final boolean submitMetrics = parse(properties, saveConfig, "submitMetrics", () -> true, Boolean::parseBoolean);
         final boolean errorTracking = parse(properties, saveConfig, "submitErrors", () -> true, Boolean::parseBoolean);
         final boolean additionalMetrics = parse(properties, saveConfig, "submitAdditionalMetrics", () -> true, Boolean::parseBoolean);
-        final boolean debug = parse(properties, saveConfig, "debug", () -> true, Boolean::parseBoolean);
+        final boolean debug = parse(properties, saveConfig, "debug", () -> false, Boolean::parseBoolean);
 
-        if (saveConfig.get() && (configVersion == null || configVersion <= CONFIG_VERSION)) try {
+        if (configVersion == null || configVersion < CONFIG_VERSION) saveConfig.set(true);
+        else if (configVersion > CONFIG_VERSION) saveConfig.set(false);
+
+        if (saveConfig.get()) try {
+            if (configVersion == null || configVersion < CONFIG_VERSION)
+                logger.info("Updating config version to %s", CONFIG_VERSION);
             Files.createDirectories(file.getParent());
             try (final var out = Files.newOutputStream(file);
                  final var writer = new OutputStreamWriter(out, UTF_8)) {
@@ -101,7 +108,7 @@ public record SimpleConfig(
         }
 
         return new SimpleConfig(
-                serverId, 
+                serverId,
                 enabled,
                 enabled && additionalMetrics,
                 debug,
@@ -126,12 +133,14 @@ public record SimpleConfig(
         }
         final var property = properties.getProperty(key);
         if (property == null) {
+            logger.warn("Missing configuration property: %s", key);
             saveConfig.set(true);
             return defaultValue != null ? defaultValue.get() : null;
         }
         try {
             return parser.apply(property.trim());
         } catch (final Exception e) {
+            logger.error("Failed to read property '%s' from config", e, key);
             saveConfig.set(true);
             return defaultValue != null ? defaultValue.get() : null;
         }

@@ -1,6 +1,7 @@
 package dev.faststats.sponge;
 
 import dev.faststats.Config;
+import dev.faststats.internal.Logger;
 import dev.faststats.internal.LoggerFactory;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Contract;
@@ -31,6 +32,7 @@ public record SpongeConfig(
         boolean errorTracking,
         boolean firstRun
 ) implements Config {
+    private static final Logger logger = LoggerFactory.factory().getLogger(SpongeConfig.class);
     private static final int CONFIG_VERSION = 1;
 
     private static final String COMMENT = """
@@ -57,6 +59,9 @@ public record SpongeConfig(
             No personal or identifying information is ever collected.
             It is recommended to enable metrics by setting 'global-state=TRUE' in the sponge metrics config.
             Learn more at: https://faststats.dev/info
+            
+            Since this is your first start with FastStats, metrics submission will not start
+            until you restart the server to allow you to opt out if you prefer.
             """;
 
     @Contract(mutates = "io")
@@ -75,17 +80,22 @@ public record SpongeConfig(
         final boolean submitMetrics = parse(properties, saveConfig, "submitMetrics", () -> true, Boolean::parseBoolean);
         final boolean errorTracking = parse(properties, saveConfig, "submitErrors", () -> true, Boolean::parseBoolean);
         final boolean additionalMetrics = parse(properties, saveConfig, "submitAdditionalMetrics", () -> true, Boolean::parseBoolean);
-        final boolean debug = parse(properties, saveConfig, "debug", () -> false, Boolean::parseBoolean);
+        final boolean debug = parse(properties, saveConfig, "debug", () -> true, Boolean::parseBoolean);
 
-        if (saveConfig.get() && (configVersion == null || configVersion <= CONFIG_VERSION)) try {
+        if (configVersion == null || configVersion < CONFIG_VERSION) saveConfig.set(true);
+        else if (configVersion > CONFIG_VERSION) saveConfig.set(false);
+
+        if (saveConfig.get()) try {
+            if (configVersion == null || configVersion < CONFIG_VERSION)
+                logger.info("Updating config version to %s", CONFIG_VERSION);
             Files.createDirectories(file.getParent());
             try (final var out = Files.newOutputStream(file);
                  final var writer = new OutputStreamWriter(out, UTF_8)) {
                 final var store = new Properties();
 
                 store.setProperty("submitMetrics", Boolean.toString(submitMetrics));
-                store.setProperty("submitErrors", Boolean.toString(errorTracking));
                 store.setProperty("submitAdditionalMetrics", Boolean.toString(additionalMetrics));
+                store.setProperty("submitErrors", Boolean.toString(errorTracking));
 
                 store.setProperty("serverId", serverId.toString());
 
@@ -124,12 +134,14 @@ public record SpongeConfig(
         }
         final var property = properties.getProperty(key);
         if (property == null) {
+            logger.warn("Missing configuration property: %s", key);
             saveConfig.set(true);
             return defaultValue != null ? defaultValue.get() : null;
         }
         try {
             return parser.apply(property.trim());
         } catch (final Exception e) {
+            logger.error("Failed to read property '%s' from config", e, key);
             saveConfig.set(true);
             return defaultValue != null ? defaultValue.get() : null;
         }
