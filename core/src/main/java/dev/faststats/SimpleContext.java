@@ -1,16 +1,20 @@
 package dev.faststats;
 
+import dev.faststats.internal.Logger;
+import dev.faststats.internal.LoggerFactory;
 import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
+import java.util.HashSet;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.function.Function;
 
-// fixme: thread safety
 public non-sealed abstract class SimpleContext implements FastStatsContext {
+    private final Logger logger = LoggerFactory.factory().getLogger(getClass());
+
     private final Config config;
     private final @Token String token;
     private final SdkInfo sdkInfo;
@@ -42,6 +46,16 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
         this.metrics = factory.metrics != null ? factory.metrics.apply(metricsFactory()) : null;
         this.errorTrackerService = factory.errorTracker != null ? new SimpleErrorTrackerService(this, factory.errorTracker) : null;
         this.featureFlagService = factory.featureFlagService != null ? factory.featureFlagService.apply(new SimpleFeatureFlagService.Factory(config, token)) : null;
+
+        final var features = new HashSet<String>(3);
+        features.add("metrics=" + (metrics != null ? "yes" : "no"));
+        features.add("error-tracking=" + (errorTrackerService != null ? "yes" : "no"));
+        features.add("feature-flags=" + (featureFlagService != null ? "yes" : "no"));
+
+        logger.info("Created FastStats context for %s using %s (%s)",
+                getProjectName(), sdkInfo.getUserAgent(),
+                String.join(", ", features)
+        );
     }
 
     private SdkInfo constructSdkInfo(final String name) throws UncheckedIOException, IllegalStateException, IllegalArgumentException {
