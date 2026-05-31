@@ -15,9 +15,9 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
     private final @Token String token;
     private final SdkInfo sdkInfo;
 
-    private @Nullable Metrics metrics;
-    private @Nullable FeatureFlagService featureFlagService;
-    private @Nullable ErrorTrackerService errorTrackerService;
+    private final @Nullable Metrics metrics;
+    private final @Nullable FeatureFlagService featureFlagService;
+    private final @Nullable ErrorTrackerService errorTrackerService;
 
     /**
      * Creates a new context that stores the shared configuration and token for all FastStats services.
@@ -31,13 +31,17 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
      * @throws UncheckedIOException     if an IO error occurs
      * @since 0.24.0
      */
-    protected SimpleContext(final Config config, final String name, @Token final String token) throws IllegalArgumentException {
-        this.sdkInfo = constructSdkInfo(name);
-        if (!token.matches(Token.PATTERN)) {
+    protected SimpleContext(final Factory<?, ?> factory, final Config config, final String name, @Token final String token) throws IllegalArgumentException {
+        if (!token.matches(Token.PATTERN))
             throw new IllegalArgumentException("Invalid token '" + token + "', must match '" + Token.PATTERN + "'");
-        }
+
+        this.sdkInfo = constructSdkInfo(name);
         this.config = config;
         this.token = token;
+
+        this.metrics = factory.metrics != null ? factory.metrics.apply(metricsFactory()) : null;
+        this.errorTrackerService = factory.errorTracker != null ? new SimpleErrorTrackerService(this, factory.errorTracker) : null;
+        this.featureFlagService = factory.featureFlagService != null ? factory.featureFlagService.apply(new SimpleFeatureFlagService.Factory(config, token)) : null;
     }
 
     private SdkInfo constructSdkInfo(final String name) throws UncheckedIOException, IllegalStateException, IllegalArgumentException {
@@ -116,18 +120,6 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
         return sdkInfo;
     }
 
-    final void setMetrics(final Metrics metrics) {
-        this.metrics = metrics;
-    }
-
-    final void setFeatureFlagService(final FeatureFlagService featureFlagService) {
-        this.featureFlagService = featureFlagService;
-    }
-
-    final void setErrorTrackerService(final ErrorTracker errorTracker) {
-        this.errorTrackerService = new SimpleErrorTrackerService(this, errorTracker);
-    }
-
     /**
      * Factory for creating a configured FastStats context.
      * <p>
@@ -189,29 +181,11 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
          * @since 0.24.0
          */
         @Contract(value = " -> new", mutates = "io")
-        public final C create() {
-            final var context = createContext();
-            if (metrics != null)
-                context.setMetrics(metrics.apply(context.metricsFactory()));
-            if (featureFlagService != null)
-                context.setFeatureFlagService(featureFlagService.apply(context.featureFlagServiceFactory()));
-            if (errorTracker != null)
-                context.setErrorTrackerService(errorTracker);
-            return context;
-        }
+        public abstract C create();
 
         @SuppressWarnings("unchecked")
         private F self() {
             return (F) this;
         }
-
-        /**
-         * Creates the platform-specific context instance.
-         *
-         * @return the platform-specific context
-         * @since 0.24.0
-         */
-        @Contract(value = " -> new", mutates = "io")
-        protected abstract C createContext();
     }
 }

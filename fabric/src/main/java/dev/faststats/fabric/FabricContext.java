@@ -17,8 +17,8 @@ import org.jetbrains.annotations.Contract;
 public final class FabricContext extends SimpleContext {
     final ModContainer mod;
 
-    private FabricContext(final String modId, @Token final String token) {
-        super(SimpleConfig.read(FabricLoader.getInstance().getConfigDir().resolve("faststats").resolve("config.properties")), "fabric", token);
+    private FabricContext(final Factory factory, final String modId, @Token final String token) {
+        super(factory, SimpleConfig.read(FabricLoader.getInstance().getConfigDir().resolve("faststats").resolve("config.properties")), "fabric", token);
         this.mod = FabricLoader.getInstance().getModContainer(modId).orElseThrow(() -> {
             return new IllegalArgumentException("Mod not found: " + modId);
         });
@@ -54,8 +54,8 @@ public final class FabricContext extends SimpleContext {
         }
 
         @Override
-        protected FabricContext createContext() {
-            return new FabricContext(modId, token);
+        public FabricContext create() {
+            return new FabricContext(this, modId, token);
         }
     }
 }

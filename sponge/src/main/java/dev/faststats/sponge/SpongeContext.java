@@ -21,11 +21,11 @@ public final class SpongeContext extends SimpleContext {
     final PluginContainer plugin;
 
     private SpongeContext(
-            final PluginContainer plugin,
+            final Factory factory, final PluginContainer plugin,
             @ConfigDir(sharedRoot = true) final Path dataDirectory,
             @Token final String token
     ) {
-        super(SpongeConfig.read(plugin, dataDirectory.resolve("faststats").resolve("config.properties")), "sponge", token);
+        super(factory, SpongeConfig.read(plugin, dataDirectory.resolve("faststats").resolve("config.properties")), "sponge", token);
         this.plugin = plugin;
     }
 
@@ -87,9 +87,9 @@ public final class SpongeContext extends SimpleContext {
         }
 
         @Override
-        protected SpongeContext createContext() {
+        public SpongeContext create() {
             if (token == null) throw new IllegalStateException("Token not configured");
-            return new SpongeContext(plugin, dataDirectory, token);
+            return new SpongeContext(this, plugin, dataDirectory, token);
         }
     }
 

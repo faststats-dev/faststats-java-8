@@ -15,9 +15,9 @@ import org.jetbrains.annotations.Contract;
  */
 public final class HytaleContext extends SimpleContext {
     private final String pluginName;
-    
-    private HytaleContext(final JavaPlugin plugin, @Token final String token) {
-        super(SimpleConfig.read(plugin.getDataDirectory().toAbsolutePath().getParent().resolve("faststats").resolve("config.properties")), "hytale", token);
+
+    private HytaleContext(final Factory factory, final JavaPlugin plugin, @Token final String token) {
+        super(factory, SimpleConfig.read(plugin.getDataDirectory().toAbsolutePath().getParent().resolve("faststats").resolve("config.properties")), "hytale", token);
         this.pluginName = plugin.getName();
     }
 
@@ -48,8 +48,8 @@ public final class HytaleContext extends SimpleContext {
         }
 
         @Override
-        protected HytaleContext createContext() {
-            return new HytaleContext(plugin, token);
+        public HytaleContext create() {
+            return new HytaleContext(this, plugin, token);
         }
     }
 }

@@ -16,8 +16,8 @@ import org.jetbrains.annotations.Contract;
 public final class BungeeContext extends SimpleContext {
     final Plugin plugin;
 
-    private BungeeContext(final Plugin plugin, @Token final String token) {
-        super(SimpleConfig.read(plugin.getProxy().getPluginsFolder().toPath().resolve("faststats").resolve("config.properties")), "bungeecord", token);
+    private BungeeContext(final Factory factory, final Plugin plugin, @Token final String token) {
+        super(factory, SimpleConfig.read(plugin.getProxy().getPluginsFolder().toPath().resolve("faststats").resolve("config.properties")), "bungeecord", token);
         this.plugin = plugin;
     }
 
@@ -47,8 +47,8 @@ public final class BungeeContext extends SimpleContext {
         }
 
         @Override
-        protected BungeeContext createContext() {
-            return new BungeeContext(plugin, token);
+        public BungeeContext create() {
+            return new BungeeContext(this, plugin, token);
         }
     }
 }

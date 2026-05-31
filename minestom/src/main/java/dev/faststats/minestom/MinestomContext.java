@@ -1,5 +1,7 @@
 package dev.faststats.minestom;
 
+import dev.faststats.ErrorTracker;
+import dev.faststats.ErrorTrackerService;
 import dev.faststats.SimpleContext;
 import dev.faststats.Token;
 import dev.faststats.config.SimpleConfig;
@@ -14,8 +16,8 @@ import java.nio.file.Path;
  * @since 0.24.0
  */
 public final class MinestomContext extends SimpleContext {
-    MinestomContext(@Token final String token) {
-        super(SimpleConfig.read(Path.of("faststats", "config.properties")), "minestom", token);
+    MinestomContext(final Factory factory, @Token final String token) {
+        super(factory, SimpleConfig.read(Path.of("faststats", "config.properties")), "minestom", token);
     }
 
     @Override
@@ -37,8 +39,8 @@ public final class MinestomContext extends SimpleContext {
         }
 
         @Override
-        protected MinestomContext createContext() {
-            return new MinestomContext(token);
+        public MinestomContext create() {
+            return new MinestomContext(this, token);
         }
     }
 }

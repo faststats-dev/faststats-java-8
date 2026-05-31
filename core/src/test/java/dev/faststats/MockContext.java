@@ -3,8 +3,8 @@ package dev.faststats;
 import java.util.UUID;
 
 public final class MockContext extends SimpleContext {
-    private MockContext() throws IllegalArgumentException {
-        super(new MockConfig(UUID.randomUUID()), "core:test", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    private MockContext(final Factory factory) throws IllegalArgumentException {
+        super(factory, new MockConfig(UUID.randomUUID()), "core:test", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
     }
 
     @Override
@@ -46,8 +46,8 @@ public final class MockContext extends SimpleContext {
 
     public static final class Factory extends SimpleContext.Factory<MockContext, Factory> {
         @Override
-        protected MockContext createContext() {
-            return new MockContext();
+        public MockContext create() {
+            return new MockContext(this);
         }
     }
 }

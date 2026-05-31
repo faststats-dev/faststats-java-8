@@ -16,8 +16,8 @@ import java.nio.file.Path;
 public final class BukkitContext extends SimpleContext {
     final Plugin plugin;
 
-    private BukkitContext(final Plugin plugin, @Token final String token) {
-        super(SimpleConfig.read(getConfigPath(plugin)), "bukkit", token);
+    private BukkitContext(final Factory factory, final Plugin plugin, @Token final String token) {
+        super(factory, SimpleConfig.read(getConfigPath(plugin)), "bukkit", token);
         this.plugin = plugin;
     }
 
@@ -54,9 +54,8 @@ public final class BukkitContext extends SimpleContext {
         }
 
         @Override
-        @Contract(value = " -> new", mutates = "io")
-        protected BukkitContext createContext() {
-            return new BukkitContext(plugin, token);
+        public BukkitContext create() {
+            return new BukkitContext(this, plugin, token);
         }
     }
 }

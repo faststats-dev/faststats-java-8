@@ -18,8 +18,8 @@ import java.nio.file.Path;
 public final class NukkitContext extends SimpleContext {
     final PluginBase plugin;
 
-    private NukkitContext(final PluginBase plugin, @Token final String token) {
-        super(SimpleConfig.read(Path.of(plugin.getServer().getPluginPath(), "faststats", "config.properties")), "nukkit", token);
+    private NukkitContext(final Factory factory, final PluginBase plugin, @Token final String token) {
+        super(factory, SimpleConfig.read(Path.of(plugin.getServer().getPluginPath(), "faststats", "config.properties")), "nukkit", token);
         this.plugin = plugin;
     }
 
@@ -49,8 +49,8 @@ public final class NukkitContext extends SimpleContext {
         }
 
         @Override
-        protected NukkitContext createContext() {
-            return new NukkitContext(plugin, token);
+        public NukkitContext create() {
+            return new NukkitContext(this, plugin, token);
         }
     }
 }

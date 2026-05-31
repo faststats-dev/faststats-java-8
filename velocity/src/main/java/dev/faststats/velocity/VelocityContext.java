@@ -24,12 +24,12 @@ public final class VelocityContext extends SimpleContext {
     final ProxyServer server;
 
     private VelocityContext(
-            final PluginContainer plugin,
+            final Factory factory, final PluginContainer plugin,
             final ProxyServer server,
             @DataDirectory final Path dataDirectory,
             @Token final String token
     ) {
-        super(SimpleConfig.read(dataDirectory.resolveSibling("faststats").resolve("config.properties")), "velocity", token);
+        super(factory, SimpleConfig.read(dataDirectory.resolveSibling("faststats").resolve("config.properties")), "velocity", token);
         this.plugin = plugin;
         this.server = server;
     }
@@ -95,9 +95,9 @@ public final class VelocityContext extends SimpleContext {
         }
 
         @Override
-        protected VelocityContext createContext() {
+        public VelocityContext create() {
             if (token == null) throw new IllegalStateException("Token not configured");
-            return new VelocityContext(plugin, server, dataDirectory, token);
+            return new VelocityContext(this, plugin, server, dataDirectory, token);
         }
     }
 
