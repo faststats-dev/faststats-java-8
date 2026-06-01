@@ -17,14 +17,16 @@ val javaVersionsOverride = mapOf(
 val defaultJavaVersion = 17
 
 subprojects {
-    apply(plugin = "java")
-    apply(plugin = "java-library")
+    apply {
+        plugin("java")
+        plugin("java-library")
+    }
 
     val example = project.name.startsWith("example")
     if (example) {
-        apply(plugin = "com.gradleup.shadow")
+        apply { plugin("com.gradleup.shadow") }
     } else {
-        apply(plugin = "maven-publish")
+        apply { plugin("maven-publish") }
     }
 
     group = "dev.faststats.metrics"
@@ -51,7 +53,7 @@ subprojects {
         doLast {
             val file = outputDir.get().file("META-INF/faststats.properties").asFile
             file.parentFile.mkdirs()
-            file.writeText("name=${project.name}\nversion=${project.version}\n")
+            file.writeText("version=${project.version}\n")
         }
     }
 

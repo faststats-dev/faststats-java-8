@@ -1,19 +1,23 @@
 package dev.faststats;
 
-import dev.faststats.core.ErrorTracker;
 import org.junit.jupiter.api.Test;
 
 import java.net.URL;
 import java.net.URLClassLoader;
-import java.util.concurrent.CompletionException;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public class ErrorTrackerTest {
-    // todo: add redaction tests
-    // todo: add nesting tests
-    // todo: add duplicate tests
+    private final SimpleErrorTracker tracker = (SimpleErrorTracker) ErrorTracker.contextUnaware();
+    private final MockContext context = new MockContext.Factory()
+            .errorTrackerService(tracker)
+            .create();
 
     @Test
     public void sameClassLoader() {
@@ -127,73 +131,275 @@ public class ErrorTrackerTest {
     }
 
     @Test
-    // todo: fix this mess
-    public void testCompile() throws InterruptedException {
-        final var tracker = ErrorTracker.contextUnaware();
-        tracker.attachErrorContext(null);
+    public void redactsBuiltInSensitiveValuesFromMessageAndStackHeader() {
+        tracker.trackError("connect jdbc:postgresql://localhost:5432/secret@db from 192.168.1.20");
 
-        try {
-            roundAndRound(10);
-        } catch (final Throwable t) {
-            tracker.trackError(t);
-        }
-        try {
-            recursiveError();
-        } catch (final Throwable t) {
-            tracker.trackError("↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ↓→ħſðđſ→ðđ””ſ→ʒðđ↓ʒ”ſðđʒ");
-            tracker.trackError(t);
-        }
-        try {
-            aroundAndAround();
-        } catch (final Throwable t) {
-            tracker.trackError(t);
-            return;
+        final var report = tracker.getFullData().get(0).getAsJsonObject();
+        final var message = report.get("message").getAsString();
+        final var header = report.getAsJsonArray("stack").get(0).getAsString();
+
+        assertEquals("connect jdbc:postgresql://localhost:[password hidden]@db from [IP hidden]", message);
+        assertEquals("java.lang.RuntimeException: " + message, header);
+    }
+
+    @Test
+    public void appliesCustomRedactionAfterBuiltInRedaction() {
+        tracker.anonymize("session=[^ ]+", "session=[hidden]");
+        tracker.trackError("failed with session=abc123 from 10.0.0.1");
+
+        final var message = tracker.getFullData()
+                .get(0)
+                .getAsJsonObject()
+                .get("message")
+                .getAsString();
+
+        assertEquals("failed with session=[hidden] from [IP hidden]", message);
+    }
+
+    @Test
+    public void nullMessagesAreNotSerializedAsMessageProperty() {
+        tracker.trackError(new RuntimeException((String) null));
+
+        final var report = tracker.getFullData().get(0).getAsJsonObject();
+        assertFalse(report.has("message"));
+        assertEquals("java.lang.RuntimeException", report.getAsJsonArray("stack").get(0).getAsString());
+    }
+
+    @Test
+    public void nestedCausesAreSerializedInOrder() {
+        final var root = new IllegalArgumentException("root secret 172.16.0.9");
+        root.setStackTrace(new StackTraceElement[]{
+                new StackTraceElement("example.Root", "fail", "Root.java", 10)
+        });
+        final var middle = new IllegalStateException("middle", root);
+        middle.setStackTrace(new StackTraceElement[]{
+                new StackTraceElement("example.Middle", "call", "Middle.java", 20),
+                new StackTraceElement("example.Root", "fail", "Root.java", 10)
+        });
+        final var top = new RuntimeException("top", middle);
+        top.setStackTrace(new StackTraceElement[]{
+                new StackTraceElement("example.Top", "run", "Top.java", 30),
+                new StackTraceElement("example.Middle", "call", "Middle.java", 20),
+                new StackTraceElement("example.Root", "fail", "Root.java", 10)
+        });
+
+        tracker.trackError(top).handled(false);
+
+        final var report = tracker.getFullData().get(0).getAsJsonObject();
+        final var stack = report.getAsJsonArray("stack");
+
+        assertEquals(RuntimeException.class.getName(), report.get("error").getAsString());
+        assertFalse(report.get("handled").getAsBoolean());
+        assertEquals("java.lang.RuntimeException: top", stack.get(0).getAsString());
+        assertEquals("  at example.Top.run(Top.java:30)", stack.get(1).getAsString());
+        assertEquals("  at example.Middle.call(Middle.java:20)", stack.get(2).getAsString());
+        assertEquals("  at example.Root.fail(Root.java:10)", stack.get(3).getAsString());
+        assertEquals("Caused by: java.lang.IllegalStateException: middle", stack.get(4).getAsString());
+        assertEquals("  ... 2 more", stack.get(5).getAsString());
+        assertEquals("Caused by: java.lang.IllegalArgumentException: root secret [IP hidden]", stack.get(6).getAsString());
+    }
+
+    @Test
+    public void cyclicCauseChainStopsAfterFirstVisit() {
+        final var first = new RuntimeException("first");
+        final var second = new IllegalStateException("second", first);
+        first.initCause(second);
+
+        tracker.trackError(first);
+
+        final var stack = tracker.getFullData().get(0).getAsJsonObject().getAsJsonArray("stack");
+        var firstCauseCount = 0;
+        var secondCauseCount = 0;
+        for (final var element : stack) {
+            final var line = element.getAsString();
+            if (line.equals("Caused by: java.lang.RuntimeException: first")) firstCauseCount++;
+            if (line.equals("Caused by: java.lang.IllegalStateException: second")) secondCauseCount++;
         }
 
-        tracker.trackError("Test error");
-        final var nestedError = new RuntimeException("Nested error");
-        final var error = new RuntimeException(null, nestedError);
+        assertEquals(1, firstCauseCount);
+        assertEquals(1, secondCauseCount);
+    }
+
+    @Test
+    public void duplicateErrorsAreAggregatedWithCount() {
+        final var first = createStableError();
+        final var second = createStableError();
+
+        tracker.trackError(first);
+        tracker.trackError(second);
+
+        final var reports = tracker.getFullData();
+        final var report = reports.get(0).getAsJsonObject();
+
+        assertEquals(1, reports.size());
+        assertEquals(2, report.get("count").getAsInt());
+        assertEquals("duplicate", report.get("message").getAsString());
+    }
+
+    @Test
+    public void clearKeepsDuplicateCountButRemovesPayloadUntilRepeated() {
+        tracker.trackError(createStableError());
+        tracker.trackError(createStableError());
+
+        tracker.clear();
+
+        assertEquals(0, tracker.getFullData().size());
+
+        tracker.trackError(createStableError());
+
+        final var report = tracker.getFullData().get(0).getAsJsonObject();
+        assertEquals("duplicate", report.get("message").getAsString());
+        assertNull(report.get("count"));
+    }
+
+    @Test
+    public void ignoredNestedCauseSuppressesWholeReport() {
+        tracker.ignoreError(IllegalArgumentException.class, "ignore me");
+
+        tracker.trackError(new RuntimeException("wrapper", new IllegalArgumentException("ignore me")));
+
+        assertEquals(0, tracker.getFullData().size());
+    }
+
+    @Test
+    public void repeatingStackFramesAreCollapsed() {
+        final var error = new StackOverflowError("recursive");
+        error.setStackTrace(new StackTraceElement[]{
+                new StackTraceElement("example.Recursive", "a", "Recursive.java", 1),
+                new StackTraceElement("example.Recursive", "b", "Recursive.java", 2),
+                new StackTraceElement("example.Recursive", "a", "Recursive.java", 1),
+                new StackTraceElement("example.Recursive", "b", "Recursive.java", 2),
+                new StackTraceElement("example.Recursive", "a", "Recursive.java", 1),
+                new StackTraceElement("example.Recursive", "b", "Recursive.java", 2)
+        });
+
         tracker.trackError(error);
 
-        tracker.trackError("hello my name is david");
-        tracker.trackError("/home/MyName/Documents/MyFile.txt");
-        tracker.trackError("C:\\Users\\MyName\\AppData\\Local\\Temp");
-        tracker.trackError("/Users/MyName/AppData/Local/Temp");
-        tracker.trackError("my ipv4 address is 215.223.110.131");
-        tracker.trackError("my ipv6 address is f833:be65:65da:975b:4896:88f7:6964:44c0");
+        final var stack = tracker.getFullData().get(0).getAsJsonObject().getAsJsonArray("stack");
+        assertEquals("java.lang.StackOverflowError: recursive", stack.get(0).getAsString());
+        assertEquals("  at example.Recursive.a(Recursive.java:1)", stack.get(1).getAsString());
+        assertEquals("  at example.Recursive.b(Recursive.java:2)", stack.get(2).getAsString());
+        assertEquals("  ... 4 more", stack.get(3).getAsString());
+        assertEquals(4, stack.size());
+    }
 
-        final var deepAsyncError = new RuntimeException("deep async error");
+    @Test
+    public void longMessagesAreTruncatedBeforeSerialization() {
+        final var message = "a".repeat(600);
 
-        final var thisIsANiceError = new Thread(() -> {
-            final var nestedAsyncError = new RuntimeException("nested async error", deepAsyncError);
-            throw new CompletionException("async error", nestedAsyncError);
+        tracker.trackError(message);
+
+        final var report = tracker.getFullData().get(0).getAsJsonObject();
+        final var serialized = report.get("message").getAsString();
+        assertEquals(503, serialized.length());
+        assertTrue(serialized.endsWith("..."));
+        assertEquals("java.lang.RuntimeException: " + serialized, report.getAsJsonArray("stack").get(0).getAsString());
+    }
+
+    @Test
+    public void attachedContextTracksUnhandledThreadError() throws InterruptedException {
+        final var handled = new CountDownLatch(1);
+        final var thrown = new RuntimeException("async failure");
+        thrown.setStackTrace(new StackTraceElement[]{
+                new StackTraceElement("example.Async", "run", "Async.java", 7)
         });
-        thisIsANiceError.start();
-        thisIsANiceError.join(1000);
 
-        Thread.sleep(1000);
+        tracker.setContextErrorHandler((loader, error) -> handled.countDown());
+        tracker.attachErrorContext(null);
+        try {
+            final var thread = new Thread(() -> {
+                throw thrown;
+            });
+            thread.start();
+            thread.join(1000);
 
-        tracker.trackError("Test error");
+            assertTrue(handled.await(1, TimeUnit.SECONDS));
+            final var report = tracker.getFullData().get(0).getAsJsonObject();
+            assertEquals("async failure", report.get("message").getAsString());
+            assertFalse(report.get("handled").getAsBoolean());
+        } finally {
+            tracker.detachErrorContext();
+        }
     }
 
-    public void recursiveError() throws StackOverflowError {
-        goRoundAndRound();
+    @Test
+    public void trackedErrorSerializesProperties() {
+        final var tracker = (SimpleErrorTracker) ErrorTracker.contextUnaware();
+        final var error = tracker.trackError("with properties");
+        error.attributes(Attributes.empty()
+                .put("stage", "startup")
+                .put("attempt", 2)
+                .put("retrying", true));
+
+        final var report = tracker.getFullData().get(0).getAsJsonObject();
+        final var context = report.getAsJsonObject("context");
+
+        assertTrue(report.get("handled").getAsBoolean());
+        assertEquals("startup", context.get("stage").getAsString());
+        assertEquals(2, context.get("attempt").getAsInt());
+        assertTrue(context.get("retrying").getAsBoolean());
     }
 
-    public void goRoundAndRound() throws StackOverflowError {
-        andRoundAndRound();
+    @Test
+    public void errorTrackerServiceSerializesGlobalAttributes() {
+        final var tracker = ErrorTracker.contextUnaware();
+        final var context = new MockContext.Factory()
+                .errorTrackerService(tracker)
+                .create();
+        tracker.getAttributes()
+                .put("stage", "startup")
+                .put("attempt", 2)
+                .put("retrying", true);
+        tracker.trackError("with global attributes");
+
+        final var service = context.errorTrackerService()
+                .map(SimpleErrorTrackerService.class::cast)
+                .orElseThrow();
+        final var data = service.createData();
+        assertNotNull(data);
+        final var globalContext = data.getAsJsonObject("context");
+
+        assertEquals("startup", globalContext.get("stage").getAsString());
+        assertEquals(2, globalContext.get("attempt").getAsInt());
+        assertTrue(globalContext.get("retrying").getAsBoolean());
     }
 
-    public void andRoundAndRound() throws StackOverflowError {
-        goRoundAndRound();
+    @Test
+    public void errorTrackerServiceSerializesRegisteredTrackerAttributesBeforeErrorAttributes() {
+        final var globalTracker = ErrorTracker.contextUnaware();
+        final var tracker = ErrorTracker.contextUnaware();
+        final var context = new MockContext.Factory()
+                .errorTrackerService(globalTracker)
+                .create();
+        tracker.getAttributes()
+                .put("stage", "startup")
+                .put("attempt", 1);
+        tracker.trackError("with tracker attributes")
+                .attributes(Attributes.empty()
+                        .put("attempt", 2)
+                        .put("retrying", true));
+
+        final var service = context.errorTrackerService()
+                .map(SimpleErrorTrackerService.class::cast)
+                .orElseThrow();
+        service.registerErrorTracker(tracker);
+        final var data = service.createData();
+        assertNotNull(data);
+        final var errorContext = data.getAsJsonArray("errors")
+                .get(0)
+                .getAsJsonObject()
+                .getAsJsonObject("context");
+
+        assertEquals("startup", errorContext.get("stage").getAsString());
+        assertEquals(2, errorContext.get("attempt").getAsInt());
+        assertTrue(errorContext.get("retrying").getAsBoolean());
     }
 
-    public void aroundAndAround() throws StackOverflowError {
-        aroundAndAround();
-    }
-
-    public void roundAndRound(final int i) throws RuntimeException {
-        if (i <= 0) throw new RuntimeException("out of stack");
-        roundAndRound(i - 1);
+    private RuntimeException createStableError() {
+        final var error = new RuntimeException("duplicate");
+        error.setStackTrace(new StackTraceElement[]{
+                new StackTraceElement("example.Plugin", "run", "Plugin.java", 42)
+        });
+        return error;
     }
 }
