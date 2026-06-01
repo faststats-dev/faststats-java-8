@@ -2,11 +2,9 @@ package dev.faststats;
 
 import com.google.gson.JsonObject;
 
-import java.net.URI;
-
 final class MockMetrics extends SimpleMetrics {
     MockMetrics(final Factory factory) {
-        super(factory, URI.create("http://localhost:5000/v1/collect"));
+        super(factory);
     }
 
     @Override

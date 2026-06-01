@@ -5,14 +5,10 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.JsonParser;
 import com.google.gson.JsonPrimitive;
-import dev.faststats.internal.Logger;
-import dev.faststats.internal.LoggerFactory;
 import org.jspecify.annotations.Nullable;
 
 import java.math.BigDecimal;
 import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
@@ -21,44 +17,31 @@ import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 
-final class SimpleFeatureFlagService implements FeatureFlagService {
-    private static final Logger logger = LoggerFactory.factory().getLogger(SimpleFeatureFlagService.class);
-    private static final URI url = getFlagsServerUrl();
+final class SimpleFeatureFlagService extends SubmissionService implements FeatureFlagService {
     private static final Duration DEFAULT_TTL = Duration.ofMinutes(5);
+    private static final String CHECK_PATH = "/v1/check";
+    private static final String OPT_IN_PATH = "/v1/opt-in";
+    private static final String OPT_OUT_PATH = "/v1/opt-out";
 
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(3))
-            .version(HttpClient.Version.HTTP_1_1)
-            .build();
+    private final URI url = getServerUrl("faststats.flags-server", "https://flags.faststats.dev");
+
     private final UUID serverId;
 
-    private final @Token String token;
     private final Attributes attributes;
     private final Duration ttl;
 
     private final Map<String, CompletableFuture<?>> fetchesInProgress = new ConcurrentHashMap<>();
 
     SimpleFeatureFlagService(
-            final Config config,
-            final @Token String token,
+            final SimpleContext context,
             final Attributes attributes,
             final Duration ttl
     ) throws IllegalArgumentException {
+        super(context);
         if (ttl.isNegative()) throw new IllegalArgumentException("TTL cannot be negative");
-        this.token = token;
         this.attributes = attributes;
         this.ttl = ttl;
-        this.serverId = config.serverId();
-    }
-
-    private static URI getFlagsServerUrl() {
-        final var property = System.getProperty("faststats.flags-server");
-        if (property != null) try {
-            return new URI(property);
-        } catch (final URISyntaxException e) {
-            logger.error("Failed to parse flags server url: %s", e, property);
-        }
-        return URI.create("https://flags.faststats.dev");
+        this.serverId = context.getConfig().serverId();
     }
 
     @SuppressWarnings("unchecked")
@@ -67,29 +50,20 @@ final class SimpleFeatureFlagService implements FeatureFlagService {
     }
 
     <T> CompletableFuture<T> optIn(final SimpleFeatureFlag<T> flag) {
-        return sendOptRequest(flag, "/v1/opt-in");
+        return sendOptRequest(flag, OPT_IN_PATH);
     }
 
     <T> CompletableFuture<T> optOut(final SimpleFeatureFlag<T> flag) {
-        return sendOptRequest(flag, "/v1/opt-out");
+        return sendOptRequest(flag, OPT_OUT_PATH);
     }
 
     private <T> CompletableFuture<T> sendOptRequest(final SimpleFeatureFlag<T> flag, final String path) {
-        final var requestBody = new JsonObject();
-        requestBody.addProperty("identifier", serverId.toString());
+        final var requestBody = createRequestBody();
         requestBody.addProperty("flag", flag.getId());
 
-        final var request = HttpRequest.newBuilder()
-                .POST(HttpRequest.BodyPublishers.ofString(requestBody.toString()))
-                .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + token)
-                .timeout(Duration.ofSeconds(3))
-                .uri(url.resolve(path))
-                .build();
-
-        return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenCompose(response -> {
-            if (response.statusCode() >= 200 && response.statusCode() < 300) return fetch(flag);
-            logger.error("Feature flag opt request failed with status %s (%s)", null, response.statusCode(), response.body());
+        return send(path, requestBody).thenCompose(response -> {
+            if (isSuccessful(response)) return fetch(flag);
+            logUnsuccessfulResponse(response);
             return CompletableFuture.failedFuture(new IllegalStateException(
                     "Feature flag opt request failed with status %s (%s)".formatted(response.statusCode(), response.body())
             ));
@@ -97,47 +71,65 @@ final class SimpleFeatureFlagService implements FeatureFlagService {
     }
 
     private <T> CompletableFuture<T> createFetch(final SimpleFeatureFlag<T> flag) {
+        final var requestBody = createRequestBody();
+        requestBody.addProperty("key", flag.getId());
+        addAttributes(requestBody, flag);
+
+        final var request = createRequest(CHECK_PATH, requestBody);
+        logger.info("Fetching %s: %s", request.uri(), requestBody.toString());
+        return HTTP_CLIENT.sendAsync(request, HttpResponse.BodyHandlers.ofString())
+                .thenApply(response -> handleFetchResponse(flag, response))
+                .whenComplete((ignored, throwable) -> fetchesInProgress.remove(flag.getId()));
+    }
+
+    private JsonObject createRequestBody() {
         final var requestBody = new JsonObject();
         requestBody.addProperty("identifier", serverId.toString());
-        requestBody.addProperty("key", flag.getId());
+        return requestBody;
+    }
 
+    private <T> void addAttributes(final JsonObject requestBody, final SimpleFeatureFlag<T> flag) {
         final var attributes = new JsonObject();
         this.attributes.forEachPrimitive(attributes::add);
         if (flag.attributes() != null) flag.attributes().forEachPrimitive(attributes::add);
         if (!attributes.isEmpty()) requestBody.add("attributes", attributes);
+    }
 
-        final var request = HttpRequest.newBuilder()
+    private CompletableFuture<HttpResponse<String>> send(final String path, final JsonObject requestBody) {
+        return HTTP_CLIENT.sendAsync(createRequest(path, requestBody), HttpResponse.BodyHandlers.ofString());
+    }
+
+    private HttpRequest createRequest(final String path, final JsonObject requestBody) {
+        return HttpRequest.newBuilder()
                 .POST(HttpRequest.BodyPublishers.ofString(requestBody.toString()))
                 .header("Content-Type", "application/json")
-                .header("Authorization", "Bearer " + token)
-                .timeout(Duration.ofSeconds(3))
-                .uri(url.resolve("/v1/check"))
+                .header("Authorization", "Bearer " + context.getToken())
+                .timeout(TIMEOUT)
+                .uri(url.resolve(path))
                 .build();
+    }
 
-        logger.info("Fetching %s: %s", request.uri(), requestBody.toString());
-        return httpClient.sendAsync(request, HttpResponse.BodyHandlers.ofString()).thenApply(response -> {
-            try {
-                final var body = JsonParser.parseString(response.body());
-
-                if (response.statusCode() < 200 || response.statusCode() >= 300) {
-                    logger.warn("Unexpected response status: %s (%s)", response.statusCode(), body);
-                    throw new IllegalStateException("Unexpected response status: %s (%s)".formatted(response.statusCode(), body));
-                }
-
-                final var value = getValue(flag, body);
-                logger.info("Fetch returned body: %s (value: %s)", body, value);
-                flag.setLastFetch(System.currentTimeMillis());
-                flag.setValue(value);
-                return value;
-            } catch (final JsonParseException e) {
-                logger.error("Unexpected response body: %s (%s)", e, response.body(), response.statusCode());
-                throw new IllegalStateException("Unexpected response body: %s (%s)".formatted(response.body(), response.statusCode()), e);
+    private <T> T handleFetchResponse(final SimpleFeatureFlag<T> flag, final HttpResponse<String> response) {
+        try {
+            if (!isSuccessful(response)) {
+                logUnsuccessfulResponse(response);
+                throw new IllegalStateException("Unexpected response status: %s (%s)".formatted(response.statusCode(), response.body()));
             }
-        }).whenComplete((ignored, throwable) -> fetchesInProgress.remove(flag.getId()));
+
+            final var body = JsonParser.parseString(response.body());
+            final var value = getValue(flag, body);
+            logger.info("Fetch returned body: %s (value: %s)", body, value);
+            flag.setLastFetch(System.currentTimeMillis());
+            flag.setValue(value);
+            return value;
+        } catch (final JsonParseException e) {
+            logger.error("Unexpected response body: %s (%s)", e, response.body(), response.statusCode());
+            throw new IllegalStateException("Unexpected response body: %s (%s)".formatted(response.body(), response.statusCode()), e);
+        }
     }
 
     @SuppressWarnings("unchecked")
-    private static <T> T getValue(final SimpleFeatureFlag<T> flag, final JsonElement body) {
+    private <T> T getValue(final SimpleFeatureFlag<T> flag, final JsonElement body) {
         if (!(body instanceof final JsonObject object)) {
             logger.warn("Unexpected JSON response: %s", body);
             throw new IllegalStateException("Unexpected JSON response: " + body);
@@ -154,7 +146,7 @@ final class SimpleFeatureFlagService implements FeatureFlagService {
         };
     }
 
-    private static Number getAsNumber(final JsonPrimitive primitive) {
+    private Number getAsNumber(final JsonPrimitive primitive) {
         try {
             if (primitive.isNumber()) return primitive.getAsNumber();
             return new BigDecimal(primitive.getAsString());
@@ -164,7 +156,7 @@ final class SimpleFeatureFlagService implements FeatureFlagService {
         }
     }
 
-    private static boolean getAsBoolean(final JsonPrimitive primitive) {
+    private boolean getAsBoolean(final JsonPrimitive primitive) {
         if (primitive.isBoolean()) return primitive.getAsBoolean();
         return switch (primitive.getAsString()) {
             case "true" -> true;
@@ -178,31 +170,35 @@ final class SimpleFeatureFlagService implements FeatureFlagService {
 
     @Override
     public FeatureFlag<Boolean> define(final String id, final boolean defaultValue) {
-        return new SimpleFeatureFlag<>(id, defaultValue, null, this);
+        return defineFlag(id, defaultValue, null);
     }
 
     @Override
     public FeatureFlag<Boolean> define(final String id, final boolean defaultValue, final Attributes attributes) {
-        return new SimpleFeatureFlag<>(id, defaultValue, attributes, this);
+        return defineFlag(id, defaultValue, attributes);
     }
 
     @Override
     public FeatureFlag<String> define(final String id, final String defaultValue) {
-        return new SimpleFeatureFlag<>(id, defaultValue, null, this);
+        return defineFlag(id, defaultValue, null);
     }
 
     @Override
     public FeatureFlag<String> define(final String id, final String defaultValue, final Attributes attributes) {
-        return new SimpleFeatureFlag<>(id, defaultValue, attributes, this);
+        return defineFlag(id, defaultValue, attributes);
     }
 
     @Override
     public FeatureFlag<Number> define(final String id, final Number defaultValue) {
-        return new SimpleFeatureFlag<>(id, defaultValue, null, this);
+        return defineFlag(id, defaultValue, null);
     }
 
     @Override
     public FeatureFlag<Number> define(final String id, final Number defaultValue, final Attributes attributes) {
+        return defineFlag(id, defaultValue, attributes);
+    }
+
+    private <T> FeatureFlag<T> defineFlag(final String id, final T defaultValue, @Nullable final Attributes attributes) {
         return new SimpleFeatureFlag<>(id, defaultValue, attributes, this);
     }
 
@@ -221,15 +217,18 @@ final class SimpleFeatureFlagService implements FeatureFlagService {
         fetchesInProgress.clear();
     }
 
+    @Override
+    protected String serverType() {
+        return "feature flag";
+    }
+
     static final class Factory implements FeatureFlagService.Factory {
-        private final Config config;
-        private final @Token String token;
+        private final SimpleContext context;
         private @Nullable Attributes attributes;
         private Duration ttl = DEFAULT_TTL;
 
-        Factory(final Config config, final @Token String token) {
-            this.config = config;
-            this.token = token;
+        Factory(final SimpleContext context) {
+            this.context = context;
         }
 
         @Override
@@ -248,7 +247,7 @@ final class SimpleFeatureFlagService implements FeatureFlagService {
         @Override
         public FeatureFlagService create() throws IllegalArgumentException {
             final var attributes = this.attributes != null ? this.attributes : Attributes.empty();
-            return new SimpleFeatureFlagService(config, token, attributes, ttl);
+            return new SimpleFeatureFlagService(context, attributes, ttl);
         }
     }
 }

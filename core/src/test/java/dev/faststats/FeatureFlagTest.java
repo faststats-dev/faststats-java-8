@@ -18,7 +18,6 @@ import java.net.Socket;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
@@ -34,7 +33,6 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 public final class FeatureFlagTest {
-    private static final UUID SERVER_ID = UUID.fromString("76a88a60-1329-4913-9525-fb16b588d07e");
     private static FlagServer server;
 
     @BeforeAll
@@ -72,8 +70,7 @@ public final class FeatureFlagTest {
 
         final var request = server.takeRequest();
         assertEquals("/v1/check", request.path());
-        assertEquals("Bearer test-token", request.headers().get("authorization").getAsString());
-        assertEquals(SERVER_ID.toString(), request.body().get("identifier").getAsString());
+        assertEquals("Bearer aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", request.headers().get("authorization").getAsString());
         assertEquals("new_commands", request.body().get("key").getAsString());
     }
 
@@ -187,39 +184,9 @@ public final class FeatureFlagTest {
     }
 
     private static SimpleFeatureFlagService service(final Attributes attributes, final Duration ttl) {
-        return new SimpleFeatureFlagService(new TestConfig(), "test-token", attributes, ttl);
-    }
-
-    private record TestConfig() implements Config {
-        @Override
-        public UUID serverId() {
-            return SERVER_ID;
-        }
-
-        @Override
-        public boolean enabled() {
-            return true;
-        }
-
-        @Override
-        public boolean submitMetrics() {
-            return true;
-        }
-
-        @Override
-        public boolean errorTracking() {
-            return true;
-        }
-
-        @Override
-        public boolean additionalMetrics() {
-            return true;
-        }
-
-        @Override
-        public boolean debug() {
-            return false;
-        }
+        return new SimpleFeatureFlagService(new MockContext.Factory()
+                .featureFlagService(FeatureFlagService.Factory::create)
+                .create(), attributes, ttl);
     }
 
     private static final class FlagServer implements AutoCloseable {

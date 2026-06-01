@@ -2,8 +2,6 @@ package dev.faststats;
 
 import com.google.gson.JsonObject;
 import dev.faststats.data.Metric;
-import dev.faststats.internal.Logger;
-import dev.faststats.internal.LoggerFactory;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Async;
 import org.jetbrains.annotations.Contract;
@@ -11,34 +9,19 @@ import org.jetbrains.annotations.MustBeInvokedByOverriders;
 import org.jetbrains.annotations.VisibleForTesting;
 import org.jspecify.annotations.Nullable;
 
-import java.io.ByteArrayOutputStream;
-import java.net.ConnectException;
 import java.net.URI;
-import java.net.URISyntaxException;
-import java.net.http.HttpClient;
-import java.net.http.HttpConnectTimeoutException;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
-import java.util.logging.Level;
-import java.util.zip.GZIPOutputStream;
-
-import static java.nio.charset.StandardCharsets.UTF_8;
 
 @ApiStatus.Internal
-public abstract class SimpleMetrics implements Metrics {
-    protected final Logger logger = LoggerFactory.factory().getLogger(getClass());
+public abstract class SimpleMetrics extends SubmissionService implements Metrics {
+    private static final String COLLECT_PATH = "/v1/collect";
 
-    private final HttpClient httpClient = HttpClient.newBuilder()
-            .connectTimeout(Duration.ofSeconds(3))
-            .version(HttpClient.Version.HTTP_1_1)
-            .build();
+    // todo: merge with context scheduler
     private final ScheduledExecutorService submissionScheduler = Executors.newSingleThreadScheduledExecutor(runnable -> {
         final var thread = new Thread(runnable, "faststats-submitter");
         thread.setDaemon(true);
@@ -48,37 +31,17 @@ public abstract class SimpleMetrics implements Metrics {
 
     private final @Nullable Runnable flush;
     private final Set<Metric<?>> metrics;
-    private final URI url;
-
-    protected final SimpleContext context;
+    private final URI url = getServerUrl(
+            "faststats.metrics-server",
+            "https://metrics.faststats.dev"
+    ).resolve(COLLECT_PATH);
 
     @Contract(mutates = "io")
-    protected SimpleMetrics(final Factory factory) throws IllegalStateException {
-        this(factory, getMetricsServerUrl());
-    }
-
-    private static URI getMetricsServerUrl() {
-        final var property = System.getProperty("faststats.metrics-server");
-        if (property != null) try {
-            return new URI(property);
-        } catch (final URISyntaxException e) {
-            final var logger = LoggerFactory.factory().getLogger(SimpleMetrics.class);
-            logger.error("Failed to parse metrics server url: %s", e, property);
-        }
-        return URI.create("https://metrics.faststats.dev/v1/collect");
-    }
-
-    @VisibleForTesting
-    protected SimpleMetrics(
-            final Factory factory,
-            final URI url
-    ) {
-        this.context = factory.context;
+    protected SimpleMetrics(final Factory factory) {
+        super(factory.context);
         this.metrics = context.getConfig().additionalMetrics() ? Set.copyOf(factory.metrics) : Set.of();
         final var debug = context.getConfig().debug() || Boolean.getBoolean("faststats.debug");
-        this.logger.setFilter(level -> debug || level.equals(Level.CONFIG));
         this.flush = factory.flush;
-        this.url = url;
     }
 
     protected long getInitialDelay() {
@@ -125,59 +88,18 @@ public abstract class SimpleMetrics implements Metrics {
         return submissionJob != null && !submissionJob.isCancelled();
     }
 
-    // todo: improve logging to be less cluttered
     @VisibleForTesting
     public boolean submit() {
-        final var data = createData().toString();
-        final var bytes = data.getBytes(UTF_8);
-
-        logger.info("Uncompressed data: %s", data);
-
-        try (final var byteOutput = new ByteArrayOutputStream();
-             final var output = new GZIPOutputStream(byteOutput)) {
-
-            output.write(bytes);
-            output.finish();
-
-            final var compressed = byteOutput.toByteArray();
-            logger.info("Compressed size: %s bytes", compressed.length);
-
-            final var request = HttpRequest.newBuilder()
-                    .POST(HttpRequest.BodyPublishers.ofByteArray(compressed))
-                    .header("Content-Encoding", "gzip")
-                    .header("Content-Type", "application/octet-stream")
-                    .header("Authorization", "Bearer " + context.getToken())
-                    .header("User-Agent", context.getSdkInfo().getUserAgent())
-                    .timeout(Duration.ofSeconds(3))
-                    .uri(url)
-                    .build();
-
-            logger.info("Sending metrics to: %s", url);
-            final var response = httpClient.send(request, HttpResponse.BodyHandlers.ofString(UTF_8));
-            final var statusCode = response.statusCode();
-            final var body = response.body();
-
-            if (statusCode >= 200 && statusCode < 300) {
-                logger.info("Metrics submitted with status code: %s (%s)", statusCode, body);
-                if (flush != null) flush.run();
-                return true;
-            } else if (statusCode >= 300 && statusCode < 400) {
-                logger.warn("Received redirect response from metrics server: %s (%s)", statusCode, body);
-            } else if (statusCode >= 400 && statusCode < 500) {
-                logger.error("Submitted invalid request to metrics server: %s (%s)", null, statusCode, body);
-            } else if (statusCode >= 500 && statusCode < 600) {
-                logger.error("Received server error response from metrics server: %s (%s)", null, statusCode, body);
-            } else {
-                logger.warn("Received unexpected response from metrics server: %s (%s)", statusCode, body);
-            }
-        } catch (final HttpConnectTimeoutException t) {
-            logger.error("Metrics submission timed out after 3 seconds: %s", null, url);
-        } catch (final ConnectException t) {
-            logger.error("Failed to connect to metrics server: %s", null, url);
-        } catch (final Throwable t) {
-            logger.error("Failed to submit metrics", t);
+        if (submit(url, createData(), "metrics")) {
+            if (flush != null) flush.run();
+            return true;
         }
         return false;
+    }
+
+    @Override
+    protected String serverType() {
+        return "metrics";
     }
 
     private static final String javaVendor = System.getProperty("java.vendor");

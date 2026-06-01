@@ -40,6 +40,7 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
         if (!token.matches(Token.PATTERN))
             throw new IllegalArgumentException("Invalid token '" + token + "', must match '" + Token.PATTERN + "'");
 
+        logger.setFilter(level -> config.debug());
         this.sdkInfo = constructSdkInfo(name);
         this.config = config;
         this.token = token;
@@ -49,7 +50,7 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
     protected final void initializeServices(final Factory<?, ?> factory) throws IllegalStateException {
         this.metrics = factory.metrics != null ? factory.metrics.apply(metricsFactory()) : null;
         this.errorTrackerService = factory.errorTracker != null ? new SimpleErrorTrackerService(this, factory.errorTracker) : null;
-        this.featureFlagService = factory.featureFlagService != null ? factory.featureFlagService.apply(new SimpleFeatureFlagService.Factory(config, token)) : null;
+        this.featureFlagService = factory.featureFlagService != null ? factory.featureFlagService.apply(new SimpleFeatureFlagService.Factory(this)) : null;
 
         if (metrics == null && errorTrackerService == null && featureFlagService == null)
             throw new IllegalStateException("Context created without any service attached, was this intentional?");
@@ -115,7 +116,7 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
 
     @Contract(value = " -> new", pure = true)
     protected FeatureFlagService.Factory featureFlagServiceFactory() {
-        return new SimpleFeatureFlagService.Factory(config, token);
+        return new SimpleFeatureFlagService.Factory(this);
     }
 
     @Override

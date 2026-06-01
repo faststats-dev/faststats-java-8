@@ -18,7 +18,6 @@ import java.util.UUID;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Function;
 import java.util.function.Supplier;
-import java.util.logging.Level;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 
@@ -81,6 +80,8 @@ public record SpongeConfig(
         final boolean errorTracking = parse(properties, saveConfig, "submitErrors", () -> true, Boolean::parseBoolean);
         final boolean additionalMetrics = parse(properties, saveConfig, "submitAdditionalMetrics", () -> true, Boolean::parseBoolean);
         final boolean debug = parse(properties, saveConfig, "debug", () -> true, Boolean::parseBoolean);
+
+        logger.setFilter(level -> debug);
 
         if (configVersion == null || configVersion < CONFIG_VERSION) saveConfig.set(true);
         else if (configVersion > CONFIG_VERSION) saveConfig.set(false);
@@ -168,9 +169,9 @@ public record SpongeConfig(
             for (final var s : split) if (s.length() > separatorLength) separatorLength = s.length();
 
             final var logger = LoggerFactory.factory().getLogger(getClass());
-            logger.log(Level.CONFIG, "-".repeat(separatorLength));
-            for (final var s : split) logger.log(Level.CONFIG, s);
-            logger.log(Level.CONFIG, "-".repeat(separatorLength));
+            logger.info("-".repeat(separatorLength));
+            for (final var s : split) logger.info(s);
+            logger.info("-".repeat(separatorLength));
 
             System.setProperty("faststats.first-run", "true");
             return false;
