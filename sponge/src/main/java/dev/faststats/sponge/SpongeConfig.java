@@ -65,6 +65,8 @@ public record SpongeConfig(
 
     @Contract(mutates = "io")
     public static SpongeConfig read(final PluginContainer plugin, final Path file) throws RuntimeException {
+        final var debugFlag = Boolean.getBoolean("faststats.debug");
+
         final var properties = readOrEmpty(file);
         final var firstRun = properties == null;
         final var saveConfig = new AtomicBoolean(firstRun);
@@ -81,7 +83,7 @@ public record SpongeConfig(
         final boolean additionalMetrics = parse(properties, saveConfig, "submitAdditionalMetrics", () -> true, Boolean::parseBoolean);
         final boolean debug = parse(properties, saveConfig, "debug", () -> true, Boolean::parseBoolean);
 
-        logger.setFilter(level -> debug);
+        logger.setFilter(level -> debug || debugFlag);
 
         if (configVersion == null || configVersion < CONFIG_VERSION) saveConfig.set(true);
         else if (configVersion > CONFIG_VERSION) saveConfig.set(false);
@@ -114,7 +116,7 @@ public record SpongeConfig(
                 serverId,
                 enabled,
                 enabled && additionalMetrics,
-                debug,
+                debug || debugFlag,
                 enabled && submitMetrics,
                 enabled && errorTracking,
                 firstRun

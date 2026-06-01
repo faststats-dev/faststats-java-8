@@ -40,7 +40,6 @@ public abstract class SimpleMetrics extends SubmissionService implements Metrics
     protected SimpleMetrics(final Factory factory) {
         super(factory.context);
         this.metrics = context.getConfig().additionalMetrics() ? Set.copyOf(factory.metrics) : Set.of();
-        final var debug = context.getConfig().debug() || Boolean.getBoolean("faststats.debug");
         this.flush = factory.flush;
     }
 
