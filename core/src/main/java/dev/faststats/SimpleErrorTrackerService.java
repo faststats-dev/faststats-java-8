@@ -75,10 +75,14 @@ final class SimpleErrorTrackerService extends SubmissionService implements Error
     }
 
     private void submit() {
-        final var data = createData();
-        if (data == null) return;
+        try {
+            final var data = createData();
+            if (data == null) return;
 
-        if (submit(url, data, "errors")) clear();
+            if (submit(url, data, "errors")) clear();
+        } catch (final Throwable t) {
+            logger.error("Failed to submit errors", t);
+        }
     }
 
     @VisibleForTesting
@@ -115,6 +119,7 @@ final class SimpleErrorTrackerService extends SubmissionService implements Error
     }
 
     void startErrorSubmission() {
+        logger.info("Starting errors submission task");
         final var initialDelay = TimeUnit.SECONDS.toMillis(Long.getLong("faststats.initial-delay", 30));
         final var period = TimeUnit.MINUTES.toMillis(30);
         context.scheduleAtFixedRate(this::submit, initialDelay, period, TimeUnit.MILLISECONDS);

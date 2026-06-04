@@ -30,30 +30,26 @@ public abstract class SimpleMetrics extends SubmissionService implements Metrics
         this.flush = factory.flush;
     }
 
-    protected long getInitialDelay() {
-        return TimeUnit.SECONDS.toMillis(Long.getLong("faststats.initial-delay", 30));
-    }
-
-    protected long getPeriod() {
-        return TimeUnit.MINUTES.toMillis(30);
-    }
-
     @Async.Schedule
     void startSubmitting() {
-        if (context.preSubmissionStart()) context.scheduleAtFixedRate(
-                this::submit,
-                getInitialDelay(),
-                getPeriod(),
-                TimeUnit.MILLISECONDS
-        );
+        if (!context.preSubmissionStart()) return;
+        logger.info("Starting metrics submission task");
+        final var initialDelay = TimeUnit.SECONDS.toMillis(Long.getLong("faststats.initial-delay", 30));
+        final var period = TimeUnit.MINUTES.toMillis(30);
+        context.scheduleAtFixedRate(this::submit, initialDelay, period, TimeUnit.MILLISECONDS);
     }
 
     private boolean submit() {
-        if (submit(url, createData(), "metrics")) {
-            if (flush != null) flush.run();
-            return true;
+        try {
+            if (submit(url, createData(), "metrics")) {
+                if (flush != null) flush.run();
+                return true;
+            }
+            return false;
+        } catch (final Throwable t) {
+            logger.error("Failed to submit metrics", t);
+            return false;
         }
-        return false;
     }
 
     @Override
