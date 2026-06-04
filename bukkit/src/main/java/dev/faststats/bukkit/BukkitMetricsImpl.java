@@ -23,12 +23,13 @@ final class BukkitMetricsImpl extends SimpleMetrics implements BukkitMetrics {
         this.plugin = plugin;
         final var server = plugin.getServer();
 
+        this.serverVersion = server.getVersion().split("\\(MC: |\\)", 2)[0].strip();
         this.pluginVersion = tryOrEmpty(() -> plugin.getPluginMeta().getVersion())
                 .orElseGet(() -> plugin.getDescription().getVersion());
         this.minecraftVersion = tryOrEmpty(() -> server.getMinecraftVersion())
                 .or(() -> tryOrEmpty(() -> server.getBukkitVersion().split("-", 2)[0]))
-                .orElseGet(() -> server.getVersion().split("\\(MC: |\\)", 3)[1]);
-        this.serverVersion = server.getVersion();
+                .or(() -> tryOrEmpty(() -> server.getVersion().split("\\(MC: |\\)", 3)[1]))
+                .orElse(serverVersion);
         this.serverType = server.getName();
     }
 
