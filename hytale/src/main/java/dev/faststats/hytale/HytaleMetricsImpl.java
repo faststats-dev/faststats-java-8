@@ -2,6 +2,7 @@ package dev.faststats.hytale;
 
 import com.google.gson.JsonObject;
 import com.hypixel.hytale.server.core.HytaleServer;
+import com.hypixel.hytale.server.core.auth.ServerAuthManager;
 import com.hypixel.hytale.server.core.universe.Universe;
 import dev.faststats.SimpleMetrics;
 import dev.faststats.config.SimpleConfig;
@@ -24,8 +25,9 @@ final class HytaleMetricsImpl extends SimpleMetrics {
 
     @Override
     protected void appendDefaultData(final JsonObject metrics) {
-        metrics.addProperty("server_version", HytaleServer.get().getServerName());
+        metrics.addProperty("online_mode", ServerAuthManager.getInstance().getAuthMode() != ServerAuthManager.AuthMode.NONE);
         metrics.addProperty("player_count", Universe.get().getPlayerCount());
         metrics.addProperty("server_type", "Hytale");
+        metrics.addProperty("server_version", HytaleServer.get().getServerName());
     }
 }
