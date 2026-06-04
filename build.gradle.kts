@@ -11,6 +11,7 @@ val javaVersionsOverride = mapOf(
     ":hytale" to 25,
     ":hytale:example-plugin" to 25,
     ":minestom" to 25,
+    ":minestom:example-server" to 25,
     ":velocity" to 21,
     ":velocity:example-plugin" to 21
 )
