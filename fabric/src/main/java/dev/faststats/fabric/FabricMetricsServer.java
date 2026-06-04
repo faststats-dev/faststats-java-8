@@ -11,7 +11,7 @@ final class FabricMetricsServer extends FabricMetrics {
 
     public FabricMetricsServer(final Factory factory, final ModContainer mod) throws IllegalStateException {
         super(factory, mod);
-        ServerLifecycleEvents.SERVER_STARTED.register(server -> this.server = server);
+        ServerLifecycleEvents.SERVER_STARTING.register(server -> this.server = server);
     }
 
     @Override

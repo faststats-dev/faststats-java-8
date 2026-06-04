@@ -5,6 +5,8 @@ import dev.faststats.SimpleContext;
 import dev.faststats.SimpleMetrics;
 import dev.faststats.Token;
 import dev.faststats.config.SimpleConfig;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
+import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import org.jetbrains.annotations.Contract;
@@ -36,6 +38,16 @@ public final class FabricContext extends SimpleContext {
             return new IllegalArgumentException("Mod not found: " + modId);
         });
         initializeServices(factory);
+        switch (FabricLoader.getInstance().getEnvironmentType()) {
+            case CLIENT -> {
+                ready();
+                ClientLifecycleEvents.CLIENT_STARTED.register(client -> shutdown());
+            }
+            case SERVER -> {
+                ServerLifecycleEvents.SERVER_STARTED.register(server -> ready());
+                ServerLifecycleEvents.SERVER_STOPPING.register(server -> shutdown());
+            }
+        }
     }
 
     @Override
