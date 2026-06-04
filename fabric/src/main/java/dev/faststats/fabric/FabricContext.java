@@ -9,12 +9,25 @@ import net.fabricmc.loader.api.FabricLoader;
 import net.fabricmc.loader.api.ModContainer;
 import org.jetbrains.annotations.Contract;
 
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
+
 /**
  * Fabric FastStats context.
  *
  * @since 0.24.0
  */
 public final class FabricContext extends SimpleContext {
+    private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(runnable -> {
+        final var thread = new Thread(runnable, "faststats-submitter");
+        thread.setDaemon(true);
+        return thread;
+    });
+    private final Set<Future<?>> tasks = new CopyOnWriteArraySet<>();
     private final ModContainer mod;
 
     private FabricContext(final Factory factory, final String modId, @Token final String token) {
@@ -43,6 +56,19 @@ public final class FabricContext extends SimpleContext {
     @Override
     public String getProjectName() {
         return mod.getMetadata().getId();
+    }
+
+    @Override
+    public void scheduleAtFixedRate(final Runnable task, final long initialDelay, final long period, final TimeUnit unit) {
+        tasks.add(executor.scheduleAtFixedRate(task, initialDelay, period, unit));
+    }
+
+    @Override
+    public void shutdown() {
+        super.shutdown();
+        tasks.forEach(task -> task.cancel(true));
+        tasks.clear();
+        executor.shutdown();
     }
 
     public static final class Factory extends SimpleContext.Factory<FabricContext, Factory> {

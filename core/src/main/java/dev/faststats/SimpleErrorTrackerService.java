@@ -10,28 +10,20 @@ import org.jspecify.annotations.Nullable;
 import java.net.URI;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 final class SimpleErrorTrackerService extends SubmissionService implements ErrorTrackerService {
+    private static Thread.@Nullable UncaughtExceptionHandler originalHandler;
     private static final Logger logger = LoggerFactory.factory().getLogger(SimpleErrorTrackerService.class);
+    private static final Set<SimpleErrorTracker> DISPATCHER_TRACKERS = new CopyOnWriteArraySet<>();
+
+    private final Set<SimpleErrorTracker> errorTrackers = new CopyOnWriteArraySet<>();
+    private final SimpleErrorTracker globalErrorTracker;
 
     private final URI url = getServerUrl(
             "faststats.error-tracker-server",
             "https://metrics.faststats.dev"
     ).resolve("/v1/error");
-    private final SimpleErrorTracker globalErrorTracker;
-
-    final Set<SimpleErrorTracker> errorTrackers = new CopyOnWriteArraySet<>();
-    final Set<ScheduledFuture<?>> submissionJobs = new CopyOnWriteArraySet<>();
-
-    private volatile @Nullable ScheduledExecutorService submissionScheduler;
-    private volatile @Nullable ScheduledFuture<?> errorSubmissionJob;
-
-    private static final Set<SimpleErrorTracker> DISPATCHER_TRACKERS = new CopyOnWriteArraySet<>();
-    private static Thread.@Nullable UncaughtExceptionHandler originalHandler;
 
     SimpleErrorTrackerService(final SimpleContext context, final ErrorTracker globalErrorTracker) {
         super(context);
@@ -48,7 +40,6 @@ final class SimpleErrorTrackerService extends SubmissionService implements Error
     @Override
     public ErrorTrackerService registerErrorTracker(final ErrorTracker errorTracker) {
         errorTrackers.add(((SimpleErrorTracker) errorTracker));
-        startErrorSubmission();
         return this;
     }
 
@@ -84,7 +75,7 @@ final class SimpleErrorTrackerService extends SubmissionService implements Error
         if (handler != null) handler.uncaughtException(thread, error);
     }
 
-    void submit() {
+    private void submit() {
         if (!context.getConfig().errorTracking()) return;
 
         final var data = createData();
@@ -121,60 +112,25 @@ final class SimpleErrorTrackerService extends SubmissionService implements Error
         return data;
     }
 
-    void clear() {
+    private void clear() {
         globalErrorTracker.clear();
         errorTrackers.forEach(SimpleErrorTracker::clear);
     }
 
-    ScheduledFuture<?> scheduleSubmission(
-            final Runnable task,
-            final long initialDelay,
-            final long period,
-            final TimeUnit unit
-    ) {
-        final var scheduler = submissionScheduler();
-        final var future = scheduler.scheduleAtFixedRate(task, Math.max(0, initialDelay), Math.max(1000, period), unit);
-        submissionJobs.add(future);
-        return future;
-    }
-
-    void unregisterSubmission(final ScheduledFuture<?> future) {
-        future.cancel(false);
-        submissionJobs.remove(future);
-    }
-
-    boolean isSubmissionSchedulerRunning() {
-        final var scheduler = submissionScheduler;
-        return scheduler != null && !scheduler.isShutdown();
-    }
-
-    private ScheduledExecutorService submissionScheduler() {
-        var scheduler = submissionScheduler;
-        if (scheduler != null && !scheduler.isShutdown()) return scheduler;
-        synchronized (this) {
-            scheduler = submissionScheduler;
-            if (scheduler != null && !scheduler.isShutdown()) return scheduler;
-            // todo: use platform native scheduler if available?
-            return submissionScheduler = Executors.newSingleThreadScheduledExecutor(runnable -> {
-                final var thread = new Thread(runnable, "faststats-submitter");
-                thread.setDaemon(true);
-                return thread;
-            });
-        }
-    }
-
-    void startErrorSubmission() {
-        if (!context.getConfig().errorTracking() || errorSubmissionJob != null) return;
-        errorSubmissionJob = scheduleSubmission(
-                this::submit,
-                TimeUnit.SECONDS.toMillis(Long.getLong("faststats.initial-delay", 30)),
-                TimeUnit.MINUTES.toMillis(30),
-                TimeUnit.MILLISECONDS
-        );
+    private void startErrorSubmission() {
+        if (!context.getConfig().errorTracking()) return;
+        final var initialDelay = TimeUnit.SECONDS.toMillis(Long.getLong("faststats.initial-delay", 30));
+        final var period = TimeUnit.MINUTES.toMillis(30);
+        context.scheduleAtFixedRate(this::submit, initialDelay, period, TimeUnit.MILLISECONDS);
     }
 
     @Override
     protected String serverType() {
         return "error";
+    }
+
+    public void shutdown() {
+        submit();
+        clear();
     }
 }

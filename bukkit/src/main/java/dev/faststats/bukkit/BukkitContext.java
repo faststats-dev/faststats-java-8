@@ -7,6 +7,9 @@ import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.Contract;
 
 import java.nio.file.Path;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Bukkit FastStats context.
@@ -14,6 +17,7 @@ import java.nio.file.Path;
  * @since 0.24.0
  */
 public final class BukkitContext extends SimpleContext {
+    private final Set<Runnable> cancellations = new CopyOnWriteArraySet<>();
     private final Plugin plugin;
 
     private BukkitContext(final Factory factory, final Plugin plugin, @Token final String token) {
@@ -54,6 +58,28 @@ public final class BukkitContext extends SimpleContext {
         return plugin.getName();
     }
 
+    @Override
+    protected void scheduleAtFixedRate(final Runnable task, final long initialDelay, final long period, final TimeUnit unit) {
+        try {
+            final var scheduledTask = plugin.getServer().getAsyncScheduler().runAtFixedRate(
+                    plugin, ignored -> task.run(), initialDelay, period, unit
+            );
+            cancellations.add(scheduledTask::cancel);
+        } catch (final Throwable t) {
+            final var scheduledTask = plugin.getServer().getScheduler().runTaskTimerAsynchronously(
+                    plugin, task, toTicks(initialDelay, unit), toTicks(period, unit)
+            );
+            cancellations.add(scheduledTask::cancel);
+        }
+    }
+
+    @Override
+    public void shutdown() {
+        super.shutdown();
+        cancellations.forEach(Runnable::run);
+        cancellations.clear();
+    }
+
     public static final class Factory extends SimpleContext.Factory<BukkitContext, Factory> {
         private final Plugin plugin;
         private final @Token String token;
@@ -67,5 +93,9 @@ public final class BukkitContext extends SimpleContext {
         public BukkitContext create() {
             return new BukkitContext(this, plugin, token);
         }
+    }
+
+    private static long toTicks(final long time, final TimeUnit unit) {
+        return Math.max(1L, unit.toMillis(time) / 50L);
     }
 }

@@ -1,6 +1,8 @@
 package dev.faststats.hytale;
 
+import com.hypixel.hytale.server.core.HytaleServer;
 import com.hypixel.hytale.server.core.plugin.JavaPlugin;
+import com.hypixel.hytale.server.core.task.TaskRegistration;
 import dev.faststats.Metrics;
 import dev.faststats.SimpleContext;
 import dev.faststats.SimpleMetrics;
@@ -8,12 +10,18 @@ import dev.faststats.Token;
 import dev.faststats.config.SimpleConfig;
 import org.jetbrains.annotations.Contract;
 
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.TimeUnit;
+
 /**
  * Hytale FastStats context.
  *
  * @since 0.24.0
  */
 public final class HytaleContext extends SimpleContext {
+    private final Set<TaskRegistration> registrations = new CopyOnWriteArraySet<>();
     private final JavaPlugin plugin;
 
     private HytaleContext(final Factory factory, final JavaPlugin plugin, @Token final String token) {
@@ -37,6 +45,19 @@ public final class HytaleContext extends SimpleContext {
     @Override
     public String getProjectName() {
         return plugin.getName();
+    }
+
+    @Override
+    protected void scheduleAtFixedRate(final Runnable task, final long initialDelay, final long period, final TimeUnit unit) {
+        @SuppressWarnings("unchecked") final var scheduledTask = (ScheduledFuture<Void>) HytaleServer.SCHEDULED_EXECUTOR.scheduleAtFixedRate(task, initialDelay, period, unit);
+        registrations.add(plugin.getTaskRegistry().registerTask(scheduledTask));
+    }
+
+    @Override
+    public void shutdown() {
+        super.shutdown();
+        registrations.forEach(TaskRegistration::unregister);
+        registrations.clear();
     }
 
     public static final class Factory extends SimpleContext.Factory<HytaleContext, Factory> {

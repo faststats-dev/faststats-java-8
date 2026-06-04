@@ -7,10 +7,16 @@ import dev.faststats.SimpleMetrics;
 import dev.faststats.Token;
 import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
+import org.spongepowered.api.Sponge;
 import org.spongepowered.api.config.ConfigDir;
+import org.spongepowered.api.scheduler.ScheduledTask;
+import org.spongepowered.api.scheduler.Task;
 import org.spongepowered.plugin.PluginContainer;
 
 import java.nio.file.Path;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Sponge FastStats context.
@@ -18,6 +24,7 @@ import java.nio.file.Path;
  * @since 0.24.0
  */
 public final class SpongeContext extends SimpleContext {
+    private final Set<ScheduledTask> tasks = new CopyOnWriteArraySet<>();
     final PluginContainer plugin;
 
     private SpongeContext(
@@ -44,6 +51,23 @@ public final class SpongeContext extends SimpleContext {
     @Override
     public String getProjectName() {
         return plugin.metadata().id();
+    }
+
+    @Override
+    protected void scheduleAtFixedRate(final Runnable task, final long initialDelay, final long period, final TimeUnit unit) {
+        tasks.add(Sponge.asyncScheduler().submit(Task.builder()
+                .delay(initialDelay, unit)
+                .interval(period, unit)
+                .plugin(plugin)
+                .execute(task)
+                .build()));
+    }
+
+    @Override
+    public void shutdown() {
+        super.shutdown();
+        tasks.forEach(ScheduledTask::cancel);
+        tasks.clear();
     }
 
     /**

@@ -4,6 +4,7 @@ import com.google.inject.Inject;
 import com.velocitypowered.api.plugin.PluginContainer;
 import com.velocitypowered.api.plugin.annotation.DataDirectory;
 import com.velocitypowered.api.proxy.ProxyServer;
+import com.velocitypowered.api.scheduler.ScheduledTask;
 import dev.faststats.Metrics;
 import dev.faststats.SimpleContext;
 import dev.faststats.SimpleMetrics;
@@ -13,6 +14,10 @@ import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
 
 import java.nio.file.Path;
+import java.time.Duration;
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Velocity FastStats context.
@@ -20,6 +25,7 @@ import java.nio.file.Path;
  * @since 0.24.0
  */
 public final class VelocityContext extends SimpleContext {
+    private final Set<ScheduledTask> tasks = new CopyOnWriteArraySet<>();
     final PluginContainer plugin;
     final ProxyServer server;
 
@@ -49,6 +55,23 @@ public final class VelocityContext extends SimpleContext {
     @Override
     public String getProjectName() {
         return plugin.getDescription().getId();
+    }
+
+    @Override
+    protected void scheduleAtFixedRate(final Runnable task, final long initialDelay, final long period, final TimeUnit unit) {
+        final var scheduledTask = server.getScheduler()
+                .buildTask(plugin, task)
+                .delay(Duration.ofMillis(unit.toMillis(initialDelay)))
+                .repeat(Duration.ofMillis(unit.toMillis(period)))
+                .schedule();
+        tasks.add(scheduledTask);
+    }
+
+    @Override
+    public void shutdown() {
+        super.shutdown();
+        tasks.forEach(ScheduledTask::cancel);
+        tasks.clear();
     }
 
     /**

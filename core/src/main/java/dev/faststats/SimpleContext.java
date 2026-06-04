@@ -11,6 +11,7 @@ import java.io.UncheckedIOException;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 public non-sealed abstract class SimpleContext implements FastStatsContext {
@@ -129,9 +130,11 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
     public void ready() {
     }
 
+    protected abstract void scheduleAtFixedRate(Runnable task, long initialDelay, long period, TimeUnit unit);
+    
     @Override
-    public final void shutdown() {
-        if (errorTrackerService instanceof final SimpleErrorTrackerService service) service.clear();
+    public void shutdown() {
+        if (errorTrackerService instanceof final SimpleErrorTrackerService service) service.shutdown();
         if (featureFlagService instanceof final SimpleFeatureFlagService service) service.shutdown();
         if (metrics instanceof final SimpleMetrics simpleMetrics) simpleMetrics.shutdown();
     }

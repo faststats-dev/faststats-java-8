@@ -12,22 +12,13 @@ import org.jspecify.annotations.Nullable;
 import java.net.URI;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ScheduledFuture;
 import java.util.concurrent.TimeUnit;
 
 @ApiStatus.Internal
 public abstract class SimpleMetrics extends SubmissionService implements Metrics {
     private static final String COLLECT_PATH = "/v1/collect";
 
-    // todo: merge with context scheduler
-    private final ScheduledExecutorService submissionScheduler = Executors.newSingleThreadScheduledExecutor(runnable -> {
-        final var thread = new Thread(runnable, "faststats-submitter");
-        thread.setDaemon(true);
-        return thread;
-    });
-    private @Nullable ScheduledFuture<?> submissionJob = null;
+    private boolean submitting;
 
     private final @Nullable Runnable flush;
     private final Set<Metric<?>> metrics;
@@ -69,22 +60,19 @@ public abstract class SimpleMetrics extends SubmissionService implements Metrics
             return;
         }
 
-        if (isSubmitting()) {
+        if (submitting) {
             logger.warn("Metrics already submitting, not starting again");
             return;
         }
 
         logger.info("Starting metrics submission");
-        submissionJob = submissionScheduler.scheduleAtFixedRate(
+        context.scheduleAtFixedRate(
                 this::submit,
-                Math.max(0, initialDelay),
-                Math.max(1000, period),
+                initialDelay,
+                period,
                 unit
         );
-    }
-
-    protected boolean isSubmitting() {
-        return submissionJob != null && !submissionJob.isCancelled();
+        submitting = true;
     }
 
     @VisibleForTesting
@@ -153,15 +141,13 @@ public abstract class SimpleMetrics extends SubmissionService implements Metrics
     protected abstract void appendDefaultData(JsonObject metrics);
 
     protected void shutdown() {
-        if (submissionJob != null) try {
+        if (submitting) try {
             logger.info("Shutting down metrics submission");
-            submissionJob.cancel(false);
             submit();
         } catch (final Throwable t) {
             logger.error("Failed to submit metrics on shutdown", t);
         } finally {
-            submissionJob = null;
-            submissionScheduler.shutdown();
+            submitting = false;
         }
     }
 

@@ -1,8 +1,21 @@
 package dev.faststats;
 
+import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
 public final class MockContext extends SimpleContext {
+    private final ScheduledExecutorService executor = Executors.newSingleThreadScheduledExecutor(runnable -> {
+        final var thread = new Thread(runnable, "faststats-submitter");
+        thread.setDaemon(true);
+        return thread;
+    });
+    private final Set<Future<?>> tasks = new CopyOnWriteArraySet<>();
+
     private MockContext(final Factory factory) throws IllegalArgumentException {
         super(factory, new MockConfig(UUID.randomUUID()), "test", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
         initializeServices(factory);
@@ -21,6 +34,19 @@ public final class MockContext extends SimpleContext {
     @Override
     public String getProjectName() {
         return "Mock";
+    }
+
+    @Override
+    public void scheduleAtFixedRate(final Runnable task, final long initialDelay, final long period, final TimeUnit unit) {
+        tasks.add(executor.scheduleAtFixedRate(task, initialDelay, period, unit));
+    }
+
+    @Override
+    public void shutdown() {
+        super.shutdown();
+        tasks.forEach(task -> task.cancel(true));
+        tasks.clear();
+        executor.shutdown();
     }
 
     private record MockConfig(UUID serverId) implements Config {

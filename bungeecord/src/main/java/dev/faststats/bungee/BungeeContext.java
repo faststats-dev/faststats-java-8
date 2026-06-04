@@ -6,7 +6,12 @@ import dev.faststats.SimpleMetrics;
 import dev.faststats.Token;
 import dev.faststats.config.SimpleConfig;
 import net.md_5.bungee.api.plugin.Plugin;
+import net.md_5.bungee.api.scheduler.ScheduledTask;
 import org.jetbrains.annotations.Contract;
+
+import java.util.Set;
+import java.util.concurrent.CopyOnWriteArraySet;
+import java.util.concurrent.TimeUnit;
 
 /**
  * BungeeCord FastStats context.
@@ -14,6 +19,7 @@ import org.jetbrains.annotations.Contract;
  * @since 0.24.0
  */
 public final class BungeeContext extends SimpleContext {
+    private final Set<ScheduledTask> tasks = new CopyOnWriteArraySet<>();
     private final Plugin plugin;
 
     private BungeeContext(final Factory factory, final Plugin plugin, @Token final String token) {
@@ -36,6 +42,18 @@ public final class BungeeContext extends SimpleContext {
     @Override
     public String getProjectName() {
         return plugin.getDescription().getName();
+    }
+
+    @Override
+    protected void scheduleAtFixedRate(final Runnable task, final long initialDelay, final long period, final TimeUnit unit) {
+        tasks.add(plugin.getProxy().getScheduler().schedule(plugin, task, initialDelay, period, unit));
+    }
+
+    @Override
+    public void shutdown() {
+        super.shutdown();
+        tasks.forEach(ScheduledTask::cancel);
+        tasks.clear();
     }
 
     public static final class Factory extends SimpleContext.Factory<BungeeContext, Factory> {
