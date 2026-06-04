@@ -6,7 +6,7 @@
   "authors": [
     "Your Name"
   ],
-  "environment": "server",
+  "environment": "*",
   "entrypoints": {
     "main": [
       "com.example.ExampleMod"
