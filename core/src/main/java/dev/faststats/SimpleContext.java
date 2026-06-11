@@ -52,12 +52,12 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
 
     @MustBeInvokedByOverriders
     protected final void initializeServices(final Factory<?, ?> factory) throws IllegalStateException {
+        if (factory.metrics == null && factory.errorTracker == null && factory.featureFlagService == null)
+            throw new IllegalStateException("Context created without any service attached, was this intentional?");
+
         this.metrics = config.submitMetrics() && factory.metrics != null ? factory.metrics.apply(metricsFactory()) : null;
         this.errorTrackerService = config.errorTracking() && factory.errorTracker != null ? new SimpleErrorTrackerService(this, factory.errorTracker) : null;
         this.featureFlagService = factory.featureFlagService != null ? factory.featureFlagService.apply(new SimpleFeatureFlagService.Factory(this)) : null;
-
-        if (metrics == null && errorTrackerService == null && featureFlagService == null)
-            throw new IllegalStateException("Context created without any service attached, was this intentional?");
 
         final var features = new HashSet<String>(3);
         features.add("metrics=" + (metrics != null ? "yes" : "no"));
