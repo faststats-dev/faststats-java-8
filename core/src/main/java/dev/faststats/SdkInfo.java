@@ -66,7 +66,6 @@ public sealed interface SdkInfo permits SimpleSdkInfo {
     interface UserAgentProvider {
         /**
          * Get the user agent for the supplied SDK information.
-         * <p>
          *
          * @param sdkInfo the SDK information to build the user agent from
          * @return the HTTP user agent
