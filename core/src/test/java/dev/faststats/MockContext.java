@@ -17,7 +17,7 @@ public final class MockContext extends SimpleContext {
     private final Set<Future<?>> tasks = new CopyOnWriteArraySet<>();
 
     private MockContext(final Factory factory) throws IllegalArgumentException {
-        super(factory, new MockConfig(UUID.randomUUID()), "test", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+        super(factory, factory.config(), "test", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
         initializeServices(factory);
     }
 
@@ -54,37 +54,55 @@ public final class MockContext extends SimpleContext {
         executor.shutdown();
     }
 
-    private record MockConfig(UUID serverId) implements Config {
+    private record MockConfig(
+            UUID serverId,
+            boolean enabled,
+            boolean submitMetrics,
+            boolean errorTracking,
+            boolean additionalMetrics,
+            boolean debug
+    ) implements Config {
         @Override
         public boolean enabled() {
-            return true;
+            return enabled;
         }
 
         @Override
         public boolean submitMetrics() {
-            return true;
+            return submitMetrics;
         }
 
         @Override
         public boolean errorTracking() {
-            return true;
+            return errorTracking;
         }
 
         @Override
         public boolean additionalMetrics() {
-            return true;
+            return additionalMetrics;
         }
 
         @Override
         public boolean debug() {
-            return true;
+            return debug;
         }
     }
 
     public static final class Factory extends SimpleContext.Factory<MockContext, Factory> {
+        private Config config = new MockConfig(UUID.randomUUID(), true, true, true, true, true);
+
+        public Factory allFeaturesDisabled() {
+            config = new MockConfig(config.serverId(), false, false, false, false, false);
+            return this;
+        }
+
         @Override
         public MockContext create() {
             return new MockContext(this);
+        }
+
+        private Config config() {
+            return config;
         }
     }
 }
