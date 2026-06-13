@@ -32,7 +32,6 @@ public abstract class SimpleMetrics extends SubmissionService implements Metrics
 
     @Async.Schedule
     void startSubmitting() {
-        if (!context.preSubmissionStart()) return;
         logger.info("Starting metrics submission task");
         final var initialDelay = TimeUnit.SECONDS.toMillis(Long.getLong("faststats.initial-delay", 30));
         final var period = TimeUnit.MINUTES.toMillis(30);
