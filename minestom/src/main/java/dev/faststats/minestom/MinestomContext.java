@@ -30,7 +30,6 @@ public final class MinestomContext extends SimpleContext {
 
     @Override
     public void ready() {
-        super.ready();
         if (!ready) errorTrackerService().map(ErrorTrackerService::globalErrorTracker).ifPresent(errorTracker -> {
             final var handler = MinecraftServer.getExceptionManager().getExceptionHandler();
             MinecraftServer.getExceptionManager().setExceptionHandler(error -> {
@@ -39,6 +38,7 @@ public final class MinestomContext extends SimpleContext {
                 errorTracker.trackError(error);
             });
         });
+        super.ready();
     }
 
     @Override
