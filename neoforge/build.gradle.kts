@@ -9,7 +9,7 @@ neoForge {
 }
 
 configurations.configureEach {
-    resolutionStrategy.force("com.google.code.gson:gson:2.13.2")
+    resolutionStrategy.force("com.google.code.gson:gson:2.14.0")
 }
 
 dependencies {
