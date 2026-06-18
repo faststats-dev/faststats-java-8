@@ -285,13 +285,13 @@ public class ErrorTrackerTest {
 
     @Test
     public void longMessagesAreTruncatedBeforeSerialization() {
-        final var message = "a".repeat(600);
+        final var message = "a".repeat(ErrorHelper.MAX_MESSAGE_LENGTH * 2);
 
         tracker.trackError(message);
 
         final var report = tracker.getFullData().get(0).getAsJsonObject();
         final var serialized = report.get("message").getAsString();
-        assertEquals(503, serialized.length());
+        assertEquals(ErrorHelper.MAX_MESSAGE_LENGTH + 3, serialized.length());
         assertTrue(serialized.endsWith("..."));
         assertEquals("java.lang.RuntimeException: " + serialized, report.getAsJsonArray("stack").get(0).getAsString());
     }

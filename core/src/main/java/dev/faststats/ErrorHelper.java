@@ -16,9 +16,9 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 final class ErrorHelper {
-    private static final int MESSAGE_LENGTH = Math.min(1000, Integer.getInteger("faststats.message-length", 500));
-    private static final int STACK_TRACE_LENGTH = Math.min(500, Integer.getInteger("faststats.stack-trace-length", 300));
-    private static final int STACK_TRACE_LIMIT = Math.min(50, Integer.getInteger("faststats.stack-trace-limit", 15));
+    public static final int MAX_MESSAGE_LENGTH = 1000;
+    public static final int MAX_FRAME_SIZE = 300;
+    public static final int MAX_STACK_SIZE = 30;
 
     private static final Set<String> allowedNames = Set.of("minecraft", "server", "root", "ubuntu");
     private static final List<Map.Entry<Pattern, String>> defaultAnonymizationEntries = defaultAnonymizationEntries();
@@ -48,7 +48,7 @@ final class ErrorHelper {
         final var stack = collapseStackTrace(elements);
         final var list = new ArrayList<>(stack);
         if (suppress != null) list.removeAll(suppress);
-        final var traces = Math.min(list.size(), STACK_TRACE_LIMIT);
+        final var traces = Math.min(list.size(), MAX_STACK_SIZE);
 
         populateTraces(traces, list, elements, stacktrace);
         appendCauseChain(error.getCause(), stack, suppress, stacktrace, customPatterns);
@@ -85,7 +85,7 @@ final class ErrorHelper {
             final var causeStack = collapseStackTrace(causeElements);
             final var causeList = new ArrayList<>(causeStack);
             causeList.removeAll(toSuppress);
-            final var causeTraces = Math.min(causeList.size(), STACK_TRACE_LIMIT);
+            final var causeTraces = Math.min(causeList.size(), MAX_STACK_SIZE);
             populateTraces(causeTraces, causeList, causeElements, stacktrace);
 
             cause = cause.getCause();
@@ -96,8 +96,8 @@ final class ErrorHelper {
                                        final JsonArray stacktrace) {
         for (var i = 0; i < traces; i++) {
             final var string = list.get(i);
-            if (string.length() <= STACK_TRACE_LENGTH) stacktrace.add("  at " + string);
-            else stacktrace.add("  at " + string.substring(0, STACK_TRACE_LENGTH) + "...");
+            if (MAX_FRAME_SIZE < 0 || string.length() <= MAX_FRAME_SIZE) stacktrace.add("  at " + string);
+            else stacktrace.add("  at " + string.substring(0, MAX_FRAME_SIZE) + "...");
         }
         if (traces > 0 && traces < list.size()) {
             stacktrace.add("  ... " + (list.size() - traces) + " more");
@@ -216,8 +216,8 @@ final class ErrorHelper {
     private static @Nullable String getAnonymizedMessage(final Throwable error, final List<Map.Entry<Pattern, String>> customPatterns) {
         final var message = error.getMessage();
         if (message == null) return null;
-        var truncated = message.length() > MESSAGE_LENGTH
-                ? message.substring(0, MESSAGE_LENGTH) + "..."
+        var truncated = message.length() > MAX_MESSAGE_LENGTH
+                ? message.substring(0, MAX_MESSAGE_LENGTH) + "..."
                 : message;
         for (final var entry : customPatterns) {
             truncated = entry.getKey().matcher(truncated).replaceAll(entry.getValue());
