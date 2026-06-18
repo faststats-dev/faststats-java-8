@@ -16,7 +16,7 @@ import java.util.Set;
 import java.util.regex.Pattern;
 
 final class ErrorHelper {
-    public static final int MAX_MESSAGE_LENGTH = 500;
+    public static final int MAX_MESSAGE_LENGTH = 1000;
     public static final int MAX_FRAME_SIZE = 300;
     public static final int MAX_STACK_SIZE = 15;
 
