@@ -7,6 +7,7 @@ module dev.faststats.fabric {
     requires com.google.gson;
     requires dev.faststats.config;
     requires dev.faststats;
+    requires java.logging;
     requires net.fabricmc.loader;
     requires org.slf4j;
 

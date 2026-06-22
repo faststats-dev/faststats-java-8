@@ -2,7 +2,6 @@ package dev.faststats;
 
 import com.google.gson.JsonElement;
 import dev.faststats.internal.Logger;
-import dev.faststats.internal.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -25,12 +24,12 @@ abstract class SubmissionService {
             .version(HttpClient.Version.HTTP_1_1)
             .build();
 
-    protected final Logger logger = LoggerFactory.factory().getLogger(getClass());
+    protected final Logger logger;
     protected final SimpleContext context;
 
     SubmissionService(final SimpleContext context) {
         this.context = context;
-        logger.setFilter(level -> context.getConfig().debug());
+        this.logger = context.getLoggerFactory().getLogger(getClass());
     }
 
     protected abstract String serverType();

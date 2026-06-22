@@ -5,6 +5,8 @@ import dev.faststats.SimpleContext;
 import dev.faststats.SimpleMetrics;
 import dev.faststats.Token;
 import dev.faststats.config.SimpleConfig;
+import dev.faststats.internal.LoggerFactory;
+import dev.faststats.internal.PlatformLoggerFactory;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.md_5.bungee.api.scheduler.ScheduledTask;
 import org.jetbrains.annotations.Contract;
@@ -22,8 +24,10 @@ public final class BungeeContext extends SimpleContext {
     private final Set<ScheduledTask> tasks = new CopyOnWriteArraySet<>();
     private final Plugin plugin;
 
-    private BungeeContext(final Factory factory, final Plugin plugin, @Token final String token) {
-        super(factory, SimpleConfig.read(plugin.getProxy().getPluginsFolder().toPath().resolve("faststats").resolve("config.properties")), "bungeecord", token);
+    private BungeeContext(final Factory factory, final LoggerFactory loggerFactory, final Plugin plugin, @Token final String token) {
+        super(factory, loggerFactory, SimpleConfig.read(plugin.getProxy().getPluginsFolder().toPath()
+                .resolve("faststats").resolve("config.properties"), loggerFactory
+        ), "bungeecord", token);
         this.plugin = plugin;
         initializeServices(factory);
     }
@@ -41,7 +45,7 @@ public final class BungeeContext extends SimpleContext {
 
     @Override
     protected boolean preSubmissionStart() {
-        return ((SimpleConfig) getConfig()).preSubmissionStart(getProjectName());
+        return ((SimpleConfig) getConfig()).preSubmissionStart(this);
     }
 
     @Override
@@ -72,7 +76,10 @@ public final class BungeeContext extends SimpleContext {
 
         @Override
         public BungeeContext create() {
-            return new BungeeContext(this, plugin, token);
+            final var loggerFactory = PlatformLoggerFactory.create((level, throwable, message) -> {
+                plugin.getLogger().log(level.getLevel(), message, throwable);
+            });
+            return new BungeeContext(this, loggerFactory, plugin, token);
         }
     }
 }

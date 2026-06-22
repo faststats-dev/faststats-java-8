@@ -9,6 +9,7 @@ module dev.faststats.neoforge {
     requires dev.faststats;
     requires fml_loader;
     requires net.neoforged.bus;
+    requires org.slf4j;
 
     requires static org.jetbrains.annotations;
     requires static org.jspecify;

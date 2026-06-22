@@ -10,8 +10,11 @@ import dev.faststats.SimpleContext;
 import dev.faststats.SimpleMetrics;
 import dev.faststats.Token;
 import dev.faststats.config.SimpleConfig;
+import dev.faststats.internal.LoggerFactory;
+import dev.faststats.internal.PlatformLoggerFactory;
 import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
+import org.slf4j.Logger;
 
 import java.nio.file.Path;
 import java.time.Duration;
@@ -30,12 +33,16 @@ public final class VelocityContext extends SimpleContext {
     final ProxyServer server;
 
     private VelocityContext(
-            final Factory factory, final PluginContainer plugin,
+            final Factory factory,
+            final LoggerFactory loggerFactory,
+            final PluginContainer plugin,
             final ProxyServer server,
             @DataDirectory final Path dataDirectory,
             @Token final String token
     ) {
-        super(factory, SimpleConfig.read(dataDirectory.resolveSibling("faststats").resolve("config.properties")), "velocity", token);
+        super(factory, loggerFactory, SimpleConfig.read(dataDirectory.resolveSibling("faststats")
+                .resolve("config.properties"), loggerFactory
+        ), "velocity", token);
         this.plugin = plugin;
         this.server = server;
         initializeServices(factory);
@@ -54,7 +61,7 @@ public final class VelocityContext extends SimpleContext {
 
     @Override
     protected boolean preSubmissionStart() {
-        return ((SimpleConfig) getConfig()).preSubmissionStart(getProjectName());
+        return ((SimpleConfig) getConfig()).preSubmissionStart(this);
     }
 
     @Override
@@ -88,6 +95,7 @@ public final class VelocityContext extends SimpleContext {
         private final PluginContainer plugin;
         private final ProxyServer server;
         private final Path dataDirectory;
+        private final Logger logger;
         private @Token
         @Nullable String token;
 
@@ -95,6 +103,7 @@ public final class VelocityContext extends SimpleContext {
          * Creates a new Velocity context builder.
          *
          * @param server        the velocity server
+         * @param logger        the plugin logger
          * @param dataDirectory the plugin data directory
          * @apiNote This instance can be injected into your plugin.
          * @since 0.24.0
@@ -103,10 +112,12 @@ public final class VelocityContext extends SimpleContext {
         public Factory(
                 final PluginContainer plugin,
                 final ProxyServer server,
+                final Logger logger,
                 @DataDirectory final Path dataDirectory
         ) {
             this.plugin = plugin;
             this.server = server;
+            this.logger = logger;
             this.dataDirectory = dataDirectory;
         }
 
@@ -126,7 +137,14 @@ public final class VelocityContext extends SimpleContext {
         @Override
         public VelocityContext create() {
             if (token == null) throw new IllegalStateException("Token not configured");
-            return new VelocityContext(this, plugin, server, dataDirectory, token);
+            final var loggerFactory = PlatformLoggerFactory.create((level, t, message) -> {
+                switch (level) {
+                    case INFO -> logger.info(message, t);
+                    case ERROR -> logger.error(message, t);
+                    case WARN -> logger.warn(message, t);
+                }
+            });
+            return new VelocityContext(this, loggerFactory, plugin, server, dataDirectory, token);
         }
     }
 
@@ -140,9 +158,10 @@ public final class VelocityContext extends SimpleContext {
         public Builder(
                 final PluginContainer plugin,
                 final ProxyServer server,
+                final Logger logger,
                 @DataDirectory final Path dataDirectory
         ) {
-            super(plugin, server, dataDirectory);
+            super(plugin, server, logger, dataDirectory);
         }
     }
 }

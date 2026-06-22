@@ -3,25 +3,43 @@ package dev.faststats.internal;
 import org.intellij.lang.annotations.PrintFormat;
 import org.jspecify.annotations.Nullable;
 
-import java.util.function.Predicate;
 import java.util.logging.Level;
 
 public interface Logger {
-    void setLevel(Level level);
-
-    boolean isLoggable(Level level);
-
-    void setFilter(@Nullable Predicate<Level> filter);
-
-    void error(@PrintFormat final String message, @Nullable final Throwable throwable, @Nullable final Object... args);
-
-    void log(final Level level, @PrintFormat final String message, @Nullable final Object... args);
-
-    default void info(@PrintFormat final String message, @Nullable final Object... args) {
-        log(Level.INFO, message, args);
+    default void error(@PrintFormat final String message, @Nullable final Throwable t, final Object... args) {
+        debug(LogLevel.ERROR, message, t, args);
     }
 
-    default void warn(@PrintFormat final String message, @Nullable final Object... args) {
-        log(Level.WARNING, message, args);
+    default void info(@PrintFormat final String message, final Object... args) {
+        debug(LogLevel.INFO, message, null, args);
+    }
+
+    default void warn(@PrintFormat final String message, final Object... args) {
+        debug(LogLevel.WARN, message, null, args);
+    }
+
+    private void debug(final LogLevel level, @PrintFormat final String message, @Nullable final Throwable t, final Object... args) {
+        if (factory().isDebug()) print(level, t, "[" + caller() + "] " + message.formatted(args));
+    }
+
+    String caller();
+    
+    LoggerFactory factory();
+
+    void print(LogLevel level, @Nullable Throwable t, String message);
+
+    enum LogLevel {
+        ERROR(Level.SEVERE),
+        INFO(Level.INFO),
+        WARN(Level.WARNING);
+        private final Level level;
+
+        LogLevel(final Level level) {
+            this.level = level;
+        }
+
+        public Level getLevel() {
+            return level;
+        }
     }
 }

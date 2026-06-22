@@ -5,6 +5,8 @@ import dev.faststats.SimpleContext;
 import dev.faststats.SimpleMetrics;
 import dev.faststats.Token;
 import dev.faststats.config.SimpleConfig;
+import dev.faststats.internal.LoggerFactory;
+import dev.faststats.internal.PlatformLoggerFactory;
 import net.neoforged.fml.ModContainer;
 import net.neoforged.fml.ModList;
 import net.neoforged.fml.loading.FMLEnvironment;
@@ -36,8 +38,10 @@ public final class NeoForgeContext extends SimpleContext {
     private final Set<Future<?>> tasks = new CopyOnWriteArraySet<>();
     private final IModInfo mod;
 
-    private NeoForgeContext(final Factory factory, final String modId, @Token final String token) {
-        super(factory, SimpleConfig.read(FMLPaths.CONFIGDIR.get().resolve("faststats").resolve("config.properties")), "neoforge", token);
+    private NeoForgeContext(final Factory factory, final LoggerFactory loggerFactory, final String modId, @Token final String token) {
+        super(factory, loggerFactory, SimpleConfig.read(FMLPaths.CONFIGDIR.get()
+                .resolve("faststats").resolve("config.properties"), loggerFactory
+        ), "neoforge", token);
         this.mod = ModList.get().getModContainerById(modId).map(ModContainer::getModInfo).orElseThrow(() -> {
             return new IllegalArgumentException("Mod not found: " + modId);
         });
@@ -67,7 +71,7 @@ public final class NeoForgeContext extends SimpleContext {
 
     @Override
     protected boolean preSubmissionStart() {
-        return ((SimpleConfig) getConfig()).preSubmissionStart(getProjectName());
+        return ((SimpleConfig) getConfig()).preSubmissionStart(this);
     }
 
     @Override
@@ -99,7 +103,15 @@ public final class NeoForgeContext extends SimpleContext {
 
         @Override
         public NeoForgeContext create() {
-            return new NeoForgeContext(this, modId, token);
+            final var logger = org.slf4j.LoggerFactory.getLogger(modId);
+            final var loggerFactory = PlatformLoggerFactory.create((level, throwable, message) -> {
+                switch (level) {
+                    case INFO -> logger.info(message, throwable);
+                    case ERROR -> logger.error(message, throwable);
+                    case WARN -> logger.warn(message, throwable);
+                }
+            });
+            return new NeoForgeContext(this, loggerFactory, modId, token);
         }
     }
 }

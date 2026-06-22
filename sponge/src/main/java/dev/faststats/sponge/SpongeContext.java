@@ -5,6 +5,8 @@ import dev.faststats.Metrics;
 import dev.faststats.SimpleContext;
 import dev.faststats.SimpleMetrics;
 import dev.faststats.Token;
+import dev.faststats.internal.LoggerFactory;
+import dev.faststats.internal.PlatformLoggerFactory;
 import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
 import org.spongepowered.api.Sponge;
@@ -28,11 +30,15 @@ public final class SpongeContext extends SimpleContext {
     final PluginContainer plugin;
 
     private SpongeContext(
-            final Factory factory, final PluginContainer plugin,
+            final Factory factory,
+            final LoggerFactory loggerFactory,
+            final PluginContainer plugin,
             @ConfigDir(sharedRoot = true) final Path dataDirectory,
             @Token final String token
     ) {
-        super(factory, SpongeConfig.read(plugin, dataDirectory.resolve("faststats").resolve("config.properties")), "sponge", token);
+        super(factory, loggerFactory, SpongeConfig.read(plugin, dataDirectory
+                .resolve("faststats").resolve("config.properties"), loggerFactory
+        ), "sponge", token);
         this.plugin = plugin;
         initializeServices(factory);
     }
@@ -50,7 +56,7 @@ public final class SpongeContext extends SimpleContext {
 
     @Override
     protected boolean preSubmissionStart() {
-        return ((SpongeConfig) getConfig()).preSubmissionStart();
+        return ((SpongeConfig) getConfig()).preSubmissionStart(this);
     }
 
     @Override
@@ -119,7 +125,23 @@ public final class SpongeContext extends SimpleContext {
         @Override
         public SpongeContext create() {
             if (token == null) throw new IllegalStateException("Token not configured");
-            return new SpongeContext(this, plugin, dataDirectory, token);
+            final var loggerFactory = PlatformLoggerFactory.create((level, throwable, message) -> {
+                switch (level) {
+                    case INFO -> {
+                        if (throwable == null) plugin.logger().info(message);
+                        else plugin.logger().info(message, throwable);
+                    }
+                    case ERROR -> {
+                        if (throwable == null) plugin.logger().error(message);
+                        else plugin.logger().error(message, throwable);
+                    }
+                    case WARN -> {
+                        if (throwable == null) plugin.logger().warn(message);
+                        else plugin.logger().warn(message, throwable);
+                    }
+                }
+            });
+            return new SpongeContext(this, loggerFactory, plugin, dataDirectory, token);
         }
     }
 
