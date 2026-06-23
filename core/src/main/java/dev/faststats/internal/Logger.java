@@ -18,7 +18,7 @@ public interface Logger {
         debug(LogLevel.WARN, message, null, args);
     }
 
-    private void debug(final LogLevel level, @PrintFormat final String message, @Nullable final Throwable t, final Object... args) {
+    default void debug(final LogLevel level, @PrintFormat final String message, @Nullable final Throwable t, final Object... args) {
         if (factory().isDebug()) print(level, t, "[" + caller() + "] " + message.formatted(args));
     }
 
