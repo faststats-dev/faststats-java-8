@@ -62,7 +62,9 @@ final class SimpleErrorTrackerService extends SubmissionService implements Error
                 tracker.trackError(error).handled(false);
                 tracker.getContextErrorHandler().ifPresent(handler -> handler.accept(loader, error));
             } catch (final Throwable t) {
-                // logger.error("Failed to dispatch uncaught error to tracker", t); // fixme
+                // todo: replace with better solution
+                System.err.println("Failed to dispatch uncaught error to tracker");
+                t.printStackTrace(System.err);
             }
         }
 
