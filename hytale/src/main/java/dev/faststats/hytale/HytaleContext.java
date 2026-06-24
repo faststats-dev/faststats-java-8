@@ -8,6 +8,8 @@ import dev.faststats.SimpleContext;
 import dev.faststats.SimpleMetrics;
 import dev.faststats.Token;
 import dev.faststats.config.SimpleConfig;
+import dev.faststats.internal.LoggerFactory;
+import dev.faststats.internal.PlatformLoggerFactory;
 import org.jetbrains.annotations.Contract;
 
 import java.util.Set;
@@ -24,8 +26,10 @@ public final class HytaleContext extends SimpleContext {
     private final Set<TaskRegistration> registrations = new CopyOnWriteArraySet<>();
     private final JavaPlugin plugin;
 
-    private HytaleContext(final Factory factory, final JavaPlugin plugin, @Token final String token) {
-        super(factory, SimpleConfig.read(plugin.getDataDirectory().toAbsolutePath().getParent().resolve("faststats").resolve("config.properties")), "hytale", token);
+    private HytaleContext(final Factory factory, final LoggerFactory loggerFactory, final JavaPlugin plugin, @Token final String token) {
+        super(factory, loggerFactory, SimpleConfig.read(plugin.getDataDirectory().toAbsolutePath().getParent()
+                .resolve("faststats").resolve("config.properties"), loggerFactory
+        ), "hytale", token);
         this.plugin = plugin;
         initializeServices(factory);
     }
@@ -44,7 +48,7 @@ public final class HytaleContext extends SimpleContext {
 
     @Override
     protected boolean preSubmissionStart() {
-        return ((SimpleConfig) getConfig()).preSubmissionStart(getProjectName());
+        return ((SimpleConfig) getConfig()).preSubmissionStart(this);
     }
 
     @Override
@@ -76,7 +80,16 @@ public final class HytaleContext extends SimpleContext {
 
         @Override
         public HytaleContext create() {
-            return new HytaleContext(this, plugin, token);
+            final var loggerFactory = new PlatformLoggerFactory((level, throwable, message) -> {
+                final var api = switch (level) {
+                    case INFO -> plugin.getLogger().atInfo();
+                    case ERROR -> plugin.getLogger().atSevere();
+                    case WARN -> plugin.getLogger().atWarning();
+                };
+                if (throwable == null) api.log(message);
+                else api.log(message, throwable);
+            });
+            return new HytaleContext(this, loggerFactory, plugin, token);
         }
     }
 }

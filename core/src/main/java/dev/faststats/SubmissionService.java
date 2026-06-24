@@ -1,8 +1,8 @@
 package dev.faststats;
 
 import com.google.gson.JsonElement;
+import com.google.gson.JsonParser;
 import dev.faststats.internal.Logger;
-import dev.faststats.internal.LoggerFactory;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
@@ -25,12 +25,12 @@ abstract class SubmissionService {
             .version(HttpClient.Version.HTTP_1_1)
             .build();
 
-    protected final Logger logger = LoggerFactory.factory().getLogger(getClass());
+    protected final Logger logger;
     protected final SimpleContext context;
 
     SubmissionService(final SimpleContext context) {
         this.context = context;
-        logger.setFilter(level -> context.getConfig().debug());
+        this.logger = context.getLoggerFactory().getLogger(getClass());
     }
 
     protected abstract String serverType();
@@ -45,18 +45,14 @@ abstract class SubmissionService {
         return URI.create(defaultUrl);
     }
 
-    // todo: i still don't like the logging :|
     protected boolean submit(
             final URI url,
             final JsonElement data,
             final String submissionName
     ) {
-        logger.info("Uncompressed data: %s", data);
-
         try {
             final var compressed = compress(data.toString());
-            logger.info("Compressed size: %s bytes", compressed.length);
-            logger.info("Sending %s to: %s", submissionName, url);
+            logger.info("Sending %s to: %s (%s bytes)\n%s", submissionName, url, compressed.length, data);
 
             final var response = HTTP_CLIENT.send(
                     createSubmissionRequest(url, compressed),
@@ -64,7 +60,9 @@ abstract class SubmissionService {
             );
 
             if (isSuccessful(response)) {
-                logger.info("%s submitted with status code: %s (%s)",
+                final var warnings = hasWarnings(response.body());
+                final var level = warnings ? Logger.LogLevel.WARN : Logger.LogLevel.INFO;
+                logger.debug(level, "%s submitted successfully with status code: %s (%s)", null,
                         capitalize(submissionName), response.statusCode(), response.body());
                 return true;
             }
@@ -77,6 +75,15 @@ abstract class SubmissionService {
             logger.error("Failed to submit %s", t, submissionName);
         }
         return false;
+    }
+
+    private boolean hasWarnings(final String body) {
+        try {
+            final var json = JsonParser.parseString(body);
+            return json.isJsonObject() && json.getAsJsonObject().has("warnings");
+        } catch (final Throwable ignored) {
+            return false;
+        }
     }
 
     private static String capitalize(final String value) {

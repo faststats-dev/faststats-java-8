@@ -7,6 +7,8 @@ import dev.faststats.SimpleContext;
 import dev.faststats.SimpleMetrics;
 import dev.faststats.Token;
 import dev.faststats.config.SimpleConfig;
+import dev.faststats.internal.LoggerFactory;
+import dev.faststats.internal.PlatformLoggerFactory;
 import org.jetbrains.annotations.Contract;
 
 import java.nio.file.Path;
@@ -23,8 +25,9 @@ public final class NukkitContext extends SimpleContext {
     private final Set<TaskHandler> tasks = new CopyOnWriteArraySet<>();
     final PluginBase plugin;
 
-    private NukkitContext(final Factory factory, final PluginBase plugin, @Token final String token) {
-        super(factory, SimpleConfig.read(Path.of(plugin.getServer().getPluginPath(), "faststats", "config.properties")), "nukkit", token);
+    private NukkitContext(final Factory factory, final LoggerFactory loggerFactory, final PluginBase plugin, @Token final String token) {
+        super(factory, loggerFactory, SimpleConfig.read(Path.of(plugin.getServer().getPluginPath())
+                .resolve("faststats").resolve("config.properties"), loggerFactory), "nukkit", token);
         this.plugin = plugin;
         initializeServices(factory);
     }
@@ -42,7 +45,7 @@ public final class NukkitContext extends SimpleContext {
 
     @Override
     protected boolean preSubmissionStart() {
-        return ((SimpleConfig) getConfig()).preSubmissionStart(getProjectName());
+        return ((SimpleConfig) getConfig()).preSubmissionStart(this);
     }
 
     @Override
@@ -76,7 +79,14 @@ public final class NukkitContext extends SimpleContext {
 
         @Override
         public NukkitContext create() {
-            return new NukkitContext(this, plugin, token);
+            final var loggerFactory = new PlatformLoggerFactory((level, t, message) -> {
+                switch (level) {
+                    case INFO -> plugin.getLogger().info(message, t);
+                    case ERROR -> plugin.getLogger().error(message, t);
+                    case WARN -> plugin.getLogger().warning(message, t);
+                }
+            });
+            return new NukkitContext(this, loggerFactory, plugin, token);
         }
     }
 

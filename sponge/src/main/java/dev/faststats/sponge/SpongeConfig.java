@@ -31,7 +31,7 @@ public record SpongeConfig(
         boolean errorTracking,
         boolean firstRun
 ) implements Config {
-    private static final Logger logger = LoggerFactory.factory().getLogger(SpongeConfig.class);
+    private static volatile boolean loggingEnabled;
     private static final int CONFIG_VERSION = 2;
 
     private static final String COMMENT = """
@@ -64,7 +64,8 @@ public record SpongeConfig(
             """;
 
     @Contract(mutates = "io")
-    public static SpongeConfig read(final PluginContainer plugin, final Path file) throws RuntimeException {
+    public static SpongeConfig read(final PluginContainer plugin, final Path file, final LoggerFactory loggerFactory) throws RuntimeException {
+        final var logger = loggerFactory.getLogger(SpongeConfig.class);
         final var debugFlag = Boolean.getBoolean("faststats.debug");
 
         final var properties = readOrEmpty(file);
@@ -76,14 +77,12 @@ public record SpongeConfig(
             final var uuid = UUID.fromString(corrected);
             if (!value.equals(uuid.toString())) saveConfig.set(true);
             return uuid;
-        });
-        final var configVersion = parse(properties, saveConfig, "configVersion", null, Integer::parseInt);
-        final boolean submitMetrics = parse(properties, saveConfig, "submitMetrics", () -> true, Boolean::parseBoolean);
-        final boolean errorTracking = parse(properties, saveConfig, "submitErrors", () -> true, Boolean::parseBoolean);
-        final boolean additionalMetrics = parse(properties, saveConfig, "submitAdditionalMetrics", () -> true, Boolean::parseBoolean);
-        final boolean debug = parse(properties, saveConfig, "debug", () -> true, Boolean::parseBoolean);
-
-        logger.setFilter(level -> debug || debugFlag);
+        }, logger);
+        final var configVersion = parse(properties, saveConfig, "configVersion", null, Integer::parseInt, logger);
+        final boolean submitMetrics = parse(properties, saveConfig, "submitMetrics", () -> true, Boolean::parseBoolean, logger);
+        final boolean errorTracking = parse(properties, saveConfig, "submitErrors", () -> true, Boolean::parseBoolean, logger);
+        final boolean additionalMetrics = parse(properties, saveConfig, "submitAdditionalMetrics", () -> true, Boolean::parseBoolean, logger);
+        final boolean debug = parse(properties, saveConfig, "debug", () -> true, Boolean::parseBoolean, logger);
 
         if (configVersion == null || configVersion < CONFIG_VERSION) saveConfig.set(true);
         else if (configVersion > CONFIG_VERSION) saveConfig.set(false);
@@ -123,13 +122,14 @@ public record SpongeConfig(
         );
     }
 
-    @Contract(value = "_, _, _, !null, _ -> !null")
+    @Contract(value = "_, _, _, !null, _, _ -> !null")
     private static <T> @Nullable T parse(
             @Nullable final Properties properties,
             final AtomicBoolean saveConfig,
             final String key,
             @Nullable final Supplier<T> defaultValue,
-            final Function<String, T> parser
+            final Function<String, T> parser,
+            final Logger logger
     ) {
         if (properties == null) {
             saveConfig.set(true);
@@ -161,8 +161,7 @@ public record SpongeConfig(
         }
     }
 
-    @SuppressWarnings("PatternValidation")
-    public boolean preSubmissionStart() {
+    public boolean preSubmissionStart(final SpongeContext context) {
         if (Boolean.getBoolean("faststats.first-run")) return false;
 
         if (firstRun()) {
@@ -170,10 +169,10 @@ public record SpongeConfig(
             final var split = ONBOARDING_MESSAGE.split("\n");
             for (final var s : split) if (s.length() > separatorLength) separatorLength = s.length();
 
-            final var logger = LoggerFactory.factory().getLogger(getClass());
-            logger.info("-".repeat(separatorLength));
-            for (final var s : split) logger.info(s);
-            logger.info("-".repeat(separatorLength));
+            final var logger = context.getLoggerFactory().getLogger(getClass());
+            logger.print(Logger.LogLevel.INFO, null, "-".repeat(separatorLength));
+            for (final var s : split) logger.print(Logger.LogLevel.INFO, null, s);
+            logger.print(Logger.LogLevel.INFO, null, "-".repeat(separatorLength));
 
             System.setProperty("faststats.first-run", "true");
             return false;

@@ -5,6 +5,7 @@ import dev.faststats.SimpleContext;
 import dev.faststats.SimpleMetrics;
 import dev.faststats.Token;
 import dev.faststats.config.SimpleConfig;
+import dev.faststats.internal.PlatformLoggerFactory;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
 import net.fabricmc.loader.api.FabricLoader;
@@ -32,8 +33,10 @@ public final class FabricContext extends SimpleContext {
     private final Set<Future<?>> tasks = new CopyOnWriteArraySet<>();
     private final ModContainer mod;
 
-    private FabricContext(final Factory factory, final String modId, @Token final String token) {
-        super(factory, SimpleConfig.read(FabricLoader.getInstance().getConfigDir().resolve("faststats").resolve("config.properties")), "fabric", token);
+    private FabricContext(final Factory factory, final dev.faststats.internal.LoggerFactory loggerFactory, final String modId, @Token final String token) {
+        super(factory, loggerFactory, SimpleConfig.read(FabricLoader.getInstance().getConfigDir()
+                .resolve("faststats").resolve("config.properties"), loggerFactory
+        ), "fabric", token);
         this.mod = FabricLoader.getInstance().getModContainer(modId).orElseThrow(() -> {
             return new IllegalArgumentException("Mod not found: " + modId);
         });
@@ -66,7 +69,7 @@ public final class FabricContext extends SimpleContext {
 
     @Override
     protected boolean preSubmissionStart() {
-        return ((SimpleConfig) getConfig()).preSubmissionStart(getProjectName());
+        return ((SimpleConfig) getConfig()).preSubmissionStart(this);
     }
 
     @Override
@@ -98,7 +101,24 @@ public final class FabricContext extends SimpleContext {
 
         @Override
         public FabricContext create() {
-            return new FabricContext(this, modId, token);
+            final var logger = org.slf4j.LoggerFactory.getLogger(modId);
+            final var loggerFactory = new PlatformLoggerFactory((level, throwable, message) -> {
+                switch (level) {
+                    case INFO -> {
+                        if (throwable == null) logger.info(message);
+                        else logger.info(message, throwable);
+                    }
+                    case ERROR -> {
+                        if (throwable == null) logger.error(message);
+                        else logger.error(message, throwable);
+                    }
+                    case WARN -> {
+                        if (throwable == null) logger.warn(message);
+                        else logger.warn(message, throwable);
+                    }
+                }
+            });
+            return new FabricContext(this, loggerFactory, modId, token);
         }
     }
 }

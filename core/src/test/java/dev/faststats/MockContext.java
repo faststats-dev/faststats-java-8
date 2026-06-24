@@ -1,5 +1,9 @@
 package dev.faststats;
 
+import dev.faststats.internal.Logger;
+import dev.faststats.internal.LoggerFactory;
+import dev.faststats.internal.PlatformLoggerFactory;
+
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArraySet;
@@ -17,8 +21,8 @@ public final class MockContext extends SimpleContext {
     });
     private final Set<Future<?>> tasks = new CopyOnWriteArraySet<>();
 
-    private MockContext(final Factory factory) throws IllegalArgumentException {
-        super(factory, factory.config(), "test", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
+    private MockContext(final Factory factory, final LoggerFactory loggerFactory) throws IllegalArgumentException {
+        super(factory, loggerFactory, factory.config(), "test", "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa");
         this.factory = factory;
         initializeServices(factory);
     }
@@ -106,7 +110,12 @@ public final class MockContext extends SimpleContext {
 
         @Override
         public MockContext create() {
-            return new MockContext(this);
+            final var loggerFactory = new PlatformLoggerFactory((level, throwable, message) -> {
+                final var output = level == Logger.LogLevel.ERROR ? System.err : System.out;
+                output.println("[" + level.name() + "] " + message);
+                if (throwable != null) throwable.printStackTrace(output);
+            });
+            return new MockContext(this, loggerFactory);
         }
 
         private Config config() {

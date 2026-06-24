@@ -2,8 +2,6 @@ package dev.faststats;
 
 import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
-import dev.faststats.internal.Logger;
-import dev.faststats.internal.LoggerFactory;
 import org.jetbrains.annotations.VisibleForTesting;
 import org.jspecify.annotations.Nullable;
 
@@ -14,7 +12,6 @@ import java.util.concurrent.TimeUnit;
 
 final class SimpleErrorTrackerService extends SubmissionService implements ErrorTrackerService {
     private static Thread.@Nullable UncaughtExceptionHandler originalHandler;
-    private static final Logger logger = LoggerFactory.factory().getLogger(SimpleErrorTrackerService.class);
     private static final Set<SimpleErrorTracker> DISPATCHER_TRACKERS = new CopyOnWriteArraySet<>();
 
     private final Set<SimpleErrorTracker> errorTrackers = new CopyOnWriteArraySet<>();
@@ -27,7 +24,6 @@ final class SimpleErrorTrackerService extends SubmissionService implements Error
 
     SimpleErrorTrackerService(final SimpleContext context, final ErrorTracker globalErrorTracker) {
         super(context);
-        logger.setFilter(level -> context.getConfig().debug()); // fixme: awful practice
         this.globalErrorTracker = ((SimpleErrorTracker) globalErrorTracker);
     }
 
@@ -66,7 +62,9 @@ final class SimpleErrorTrackerService extends SubmissionService implements Error
                 tracker.trackError(error).handled(false);
                 tracker.getContextErrorHandler().ifPresent(handler -> handler.accept(loader, error));
             } catch (final Throwable t) {
-                logger.error("Failed to dispatch uncaught error to tracker", t);
+                // todo: replace with better solution
+                System.err.println("Failed to dispatch uncaught error to tracker");
+                t.printStackTrace(System.err);
             }
         }
 

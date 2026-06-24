@@ -16,11 +16,12 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 public non-sealed abstract class SimpleContext implements FastStatsContext {
-    private final Logger logger = LoggerFactory.factory().getLogger(getClass());
-
     private final @Token String token;
     private final Config config;
     private final SdkInfo sdkInfo;
+
+    private final LoggerFactory loggerFactory;
+    private final Logger logger;
 
     protected volatile boolean ready = false;
 
@@ -40,11 +41,14 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
      * @throws UncheckedIOException     if an IO error occurs
      * @since 0.24.0
      */
-    protected SimpleContext(final Factory<?, ?> factory, final Config config, final String name, @Token final String token) throws IllegalArgumentException {
+    protected SimpleContext(final Factory<?, ?> factory, final LoggerFactory loggerFactory, final Config config, final String name, @Token final String token) throws IllegalArgumentException {
         if (!token.matches(Token.PATTERN))
             throw new IllegalArgumentException("Invalid token '" + token + "', must match '" + Token.PATTERN + "'");
 
-        logger.setFilter(level -> config.debug());
+        this.loggerFactory = loggerFactory;
+        loggerFactory.setDebug(config.debug());
+        this.logger = loggerFactory.getLogger(getClass());
+
         this.sdkInfo = constructSdkInfo(name);
         this.config = config;
         this.token = token;
@@ -88,6 +92,10 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
         } catch (final IOException e) {
             throw new UncheckedIOException("Failed to read faststats.properties from META-INF", e);
         }
+    }
+
+    public LoggerFactory getLoggerFactory() {
+        return loggerFactory;
     }
 
     protected abstract boolean preSubmissionStart();

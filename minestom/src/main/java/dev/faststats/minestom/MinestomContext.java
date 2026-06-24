@@ -5,10 +5,12 @@ import dev.faststats.ErrorTrackerService;
 import dev.faststats.SimpleContext;
 import dev.faststats.Token;
 import dev.faststats.config.SimpleConfig;
+import dev.faststats.internal.PlatformLoggerFactory;
 import net.minestom.server.MinecraftServer;
 import net.minestom.server.timer.Task;
 import net.minestom.server.timer.TaskSchedule;
 import org.jetbrains.annotations.Contract;
+import org.slf4j.LoggerFactory;
 
 import java.nio.file.Path;
 import java.util.Set;
@@ -23,8 +25,8 @@ import java.util.concurrent.TimeUnit;
 public final class MinestomContext extends SimpleContext {
     private final Set<Task> tasks = new CopyOnWriteArraySet<>();
 
-    MinestomContext(final Factory factory, @Token final String token) {
-        super(factory, SimpleConfig.read(Path.of("faststats", "config.properties")), "minestom", token);
+    MinestomContext(final Factory factory, final dev.faststats.internal.LoggerFactory loggerFactory, @Token final String token) {
+        super(factory, loggerFactory, SimpleConfig.read(Path.of("faststats", "config.properties"), loggerFactory), "minestom", token);
         initializeServices(factory);
     }
 
@@ -49,7 +51,7 @@ public final class MinestomContext extends SimpleContext {
 
     @Override
     protected boolean preSubmissionStart() {
-        return ((SimpleConfig) getConfig()).preSubmissionStart(getProjectName());
+        return ((SimpleConfig) getConfig()).preSubmissionStart(this);
     }
 
     @Override
@@ -83,7 +85,24 @@ public final class MinestomContext extends SimpleContext {
 
         @Override
         public MinestomContext create() {
-            return new MinestomContext(this, token);
+            final var logger = LoggerFactory.getLogger("FastStats");
+            final var loggerFactory = new PlatformLoggerFactory((level, throwable, message) -> {
+                switch (level) {
+                    case INFO -> {
+                        if (throwable == null) logger.info(message);
+                        else logger.info(message, throwable);
+                    }
+                    case ERROR -> {
+                        if (throwable == null) logger.error(message);
+                        else logger.error(message, throwable);
+                    }
+                    case WARN -> {
+                        if (throwable == null) logger.warn(message);
+                        else logger.warn(message, throwable);
+                    }
+                }
+            });
+            return new MinestomContext(this, loggerFactory, token);
         }
     }
 }

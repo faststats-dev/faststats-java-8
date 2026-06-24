@@ -2,24 +2,17 @@ package dev.faststats.internal;
 
 import org.jetbrains.annotations.Contract;
 
-import java.util.ServiceLoader;
-
-public interface LoggerFactory {
-    @Contract(pure = true)
-    static LoggerFactory factory() {
-        final class Holder {
-            private static final LoggerFactory INSTANCE = ServiceLoader.load(LoggerFactory.class)
-                    .findFirst()
-                    .orElseGet(SimpleLoggerFactory::new);
-        }
-        return Holder.INSTANCE;
-    }
+public sealed abstract class LoggerFactory permits PlatformLoggerFactory {
+    private volatile boolean debug;
 
     @Contract(value = "_ -> new", pure = true)
-    default Logger getLogger(final Class<?> clazz) {
-        return getLogger(clazz.getName());
+    public abstract Logger getLogger(Class<?> clazz);
+
+    public boolean isDebug() {
+        return debug;
     }
 
-    @Contract(value = "_ -> new", pure = true)
-    Logger getLogger(String name);
+    public void setDebug(final boolean debug) {
+        this.debug = debug;
+    }
 }
