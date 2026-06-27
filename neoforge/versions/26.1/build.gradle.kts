@@ -12,7 +12,7 @@ tasks.compileJava {
 }
 
 neoForge {
-    version = "26.1.2.76"
+    version = "26.2.0.7-beta"
 }
 
 configurations.configureEach {

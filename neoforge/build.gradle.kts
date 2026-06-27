@@ -14,6 +14,10 @@ configurations.compileClasspath {
     attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 25)
 }
 
+configurations.runtimeClasspath {
+    attributes.attribute(TargetJvmVersion.TARGET_JVM_VERSION_ATTRIBUTE, 25)
+}
+
 allprojects {
     if (project.name == "example-mod") return@allprojects
     apply { plugin("maven-publish") }
