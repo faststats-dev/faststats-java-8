@@ -1,4 +1,4 @@
-package dev.faststats.fabric.compat.v1_21_11;
+package dev.faststats.fabric.compat.v1_18;
 
 import dev.faststats.fabric.compat.CompatibilityLayer;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerLifecycleEvents;
@@ -17,7 +17,7 @@ public final class CompatibilityLayerImpl implements CompatibilityLayer {
     @Override
     public boolean clientOnlineMode() {
         final var client = Minecraft.getInstance();
-        return client.getUser().getXuid().isPresent() && !client.isOfflineDeveloperMode();
+        return client.getUser().getGameProfile().getId().version() == 4; // todo: improve this check
     }
 
     @Override
