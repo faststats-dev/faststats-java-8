@@ -18,23 +18,25 @@ include("core")
 include("core:example")
 include("fabric")
 include("fabric:example-mod")
-include("fabric:versions:1.16.1-1.17.1")
-include("fabric:versions:1.18-1.21.8")
-include("fabric:versions:1.21.9-1.21.11")
-include("fabric:versions:26.1-26.3")
 include("hytale")
 include("hytale:example-plugin")
 include("minestom")
 include("minestom:example-server")
 include("neoforge")
 include("neoforge:example-mod")
-// todo: automate version modules?
-include("neoforge:versions:1.20.6-1.21.8")
-include("neoforge:versions:1.21.9-1.21.11")
-include("neoforge:versions:26.1-26.2")
 include("nukkit")
 include("nukkit:example-plugin")
 include("sponge")
 include("sponge:example-plugin")
 include("velocity")
 include("velocity:example-plugin")
+
+fun includeVersionModules(platform: String) {
+    file("$platform/versions")
+        .listFiles { file -> file.isDirectory && file.resolve("build.gradle.kts").isFile }
+        ?.sortedBy { it.name }
+        ?.forEach { include("$platform:versions:${it.name}") }
+}
+
+includeVersionModules("fabric")
+includeVersionModules("neoforge")

@@ -42,8 +42,6 @@ dependencies {
     minecraft("com.mojang:minecraft:1.21.8")
     mappings(loom.officialMojangMappings())
 
-    // compileOnly("net.fabricmc.fabric-api:fabric-api:0.46.1+1.17") // 1.17 // todo new module
-
     // compileOnly("net.fabricmc.fabric-api:fabric-api:0.44.0+1.18") // 1.18
     // compileOnly("net.fabricmc.fabric-api:fabric-api:0.46.6+1.18") // 1.18.1
     // compileOnly("net.fabricmc.fabric-api:fabric-api:0.77.0+1.18.2") // 1.18.2
