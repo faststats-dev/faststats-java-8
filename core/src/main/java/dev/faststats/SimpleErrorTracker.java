@@ -4,6 +4,7 @@ import com.google.gson.JsonArray;
 import org.jetbrains.annotations.VisibleForTesting;
 import org.jspecify.annotations.Nullable;
 
+import java.util.AbstractMap;
 import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -42,9 +43,10 @@ final class SimpleErrorTracker implements ErrorTracker {
 
     @Override
     public TrackedError trackError(final Throwable error) {
-        final var trackedError = new SimpleTrackedError(error);
+        final TrackedError trackedError = new SimpleTrackedError(error);
         try {
-            if (isIgnored(error, Collections.newSetFromMap(new IdentityHashMap<>()))) return trackedError;
+            if (isIgnored(error, Collections.newSetFromMap(new IdentityHashMap<>())))
+                return trackedError;
             reports.compute(trackedError, (key, reports) -> {
                 return reports != null ? reports + 1 : 1;
             });
@@ -58,10 +60,10 @@ final class SimpleErrorTracker implements ErrorTracker {
 
         if (ignoredTypes.contains(error.getClass())) return true;
 
-        final var message = error.getMessage() != null ? error.getMessage() : "";
+        final String message = error.getMessage() != null ? error.getMessage() : "";
         if (ignoredPatterns.stream().map(pattern -> pattern.matcher(message)).anyMatch(Matcher::find)) return true;
 
-        final var patterns = ignoredTypedPatterns.get(error.getClass());
+        final Set<Pattern> patterns = ignoredTypedPatterns.get(error.getClass());
         if (patterns != null && patterns.stream().map(pattern -> pattern.matcher(message)).anyMatch(Matcher::find))
             return true;
 
@@ -88,7 +90,7 @@ final class SimpleErrorTracker implements ErrorTracker {
 
     @Override
     public ErrorTracker anonymize(final Pattern pattern, final String replacement) {
-        anonymizationEntries.add(Map.entry(pattern, replacement));
+        anonymizationEntries.add(new AbstractMap.SimpleImmutableEntry<>(pattern, replacement));
         return this;
     }
 
@@ -98,10 +100,10 @@ final class SimpleErrorTracker implements ErrorTracker {
     }
 
     JsonArray getData(final boolean includeTrackerAttributes) {
-        final var report = new JsonArray(reports.size());
+        final JsonArray report = new JsonArray(reports.size());
         reports.forEach((error, count) -> {
-            final var attributes = includeTrackerAttributes ? this.attributes : null;
-            final var compiled = ErrorHelper.compile(error, null, anonymizationEntries, attributes);
+            final Attributes attributes = includeTrackerAttributes ? this.attributes : null;
+            final com.google.gson.JsonObject compiled = ErrorHelper.compile(error, null, anonymizationEntries, attributes);
             if (count > 1) compiled.addProperty("count", count);
             report.add(compiled);
         });

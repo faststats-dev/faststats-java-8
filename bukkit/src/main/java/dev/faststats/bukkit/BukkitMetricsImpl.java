@@ -3,6 +3,8 @@ package dev.faststats.bukkit;
 import com.google.gson.JsonObject;
 import dev.faststats.SimpleMetrics;
 import dev.faststats.data.Metric;
+import org.bukkit.Server;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.plugin.Plugin;
 
 import java.util.Optional;
@@ -21,34 +23,35 @@ final class BukkitMetricsImpl extends SimpleMetrics implements BukkitMetrics {
         super(factory);
 
         this.plugin = plugin;
-        final var server = plugin.getServer();
+        final Server server = plugin.getServer();
 
-        this.serverVersion = server.getVersion().split("\\(MC: |\\)", 2)[0].strip();
+        this.serverVersion = server.getVersion().split("\\(MC: |\\)", 2)[0].trim();
         this.pluginVersion = tryOrEmpty(() -> plugin.getPluginMeta().getVersion())
                 .orElseGet(() -> plugin.getDescription().getVersion());
-        this.minecraftVersion = tryOrEmpty(() -> server.getMinecraftVersion())
-                .or(() -> tryOrEmpty(() -> server.getBukkitVersion().split("-", 2)[0]))
-                .or(() -> tryOrEmpty(() -> server.getVersion().split("\\(MC: |\\)", 3)[1]))
-                .orElse(serverVersion);
+        this.minecraftVersion = firstPresent(
+                tryOrEmpty(() -> server.getMinecraftVersion()),
+                tryOrEmpty(() -> server.getBukkitVersion().split("-", 2)[0]),
+                tryOrEmpty(() -> server.getVersion().split("\\(MC: |\\)", 3)[1])
+        ).orElse(serverVersion);
         this.serverType = server.getName();
     }
 
     private boolean checkOnlineMode() {
-        final var server = plugin.getServer();
-        return tryOrEmpty(() -> server.getServerConfig().isProxyOnlineMode())
-                .or(() -> tryOrEmpty(this::isProxyOnlineMode))
-                .orElseGet(server::getOnlineMode);
+        final Server server = plugin.getServer();
+        return firstPresent(
+                tryOrEmpty(() -> server.getServerConfig().isProxyOnlineMode()),
+                tryOrEmpty(this::isProxyOnlineMode)
+        ).orElseGet(server::getOnlineMode);
     }
 
-    @SuppressWarnings("removal")
     private boolean isProxyOnlineMode() {
-        final var server = plugin.getServer();
-        final var proxies = server.spigot().getPaperConfig().getConfigurationSection("proxies");
+        final Server server = plugin.getServer();
+        final ConfigurationSection proxies = server.spigot().getPaperConfig().getConfigurationSection("proxies");
         if (proxies == null) return false;
 
         if (proxies.getBoolean("velocity.enabled") && proxies.getBoolean("velocity.online-mode")) return true;
 
-        final var settings = server.spigot().getSpigotConfig().getConfigurationSection("settings");
+        final ConfigurationSection settings = server.spigot().getSpigotConfig().getConfigurationSection("settings");
         if (settings == null) return false;
 
         return settings.getBoolean("bungeecord") && proxies.getBoolean("bungee-cord.online-mode");
@@ -80,6 +83,14 @@ final class BukkitMetricsImpl extends SimpleMetrics implements BukkitMetrics {
         } catch (final NoSuchMethodError | Exception e) {
             return Optional.empty();
         }
+    }
+
+    @SafeVarargs
+    private static <T> Optional<T> firstPresent(final Optional<T>... options) {
+        for (final Optional<T> option : options) {
+            if (option.isPresent()) return option;
+        }
+        return Optional.empty();
     }
 
     public static final class Factory extends SimpleMetrics.Factory implements BukkitMetrics.Factory {

@@ -41,7 +41,7 @@ public interface Metric<T> {
      */
     @Contract(pure = true)
     @ApiStatus.OverrideOnly
-    @Deprecated(since = "0.28.0", forRemoval = true)
+    @Deprecated
     default Optional<? extends T> compute() throws Exception {
         return Optional.empty();
     }

@@ -7,7 +7,7 @@ import org.jetbrains.annotations.Contract;
  *
  * @since 0.24.0
  */
-public sealed interface TrackedError permits SimpleTrackedError {
+public interface TrackedError {
     /**
      * Returns the tracked error.
      *
