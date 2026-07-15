@@ -136,7 +136,13 @@ public abstract class SimpleMetrics extends SubmissionService implements Metrics
 
         @Override
         public Factory onFlush(final Runnable flush) {
-            this.flush = flush;
+            final var runnable = this.flush;
+            if (runnable == null) {
+                this.flush = flush;
+            } else this.flush = () -> {
+                runnable.run();
+                flush.run();
+            };
             return this;
         }
     }

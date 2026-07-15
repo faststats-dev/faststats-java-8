@@ -29,7 +29,7 @@ public interface Metrics {
         Factory addMetric(Metric<?> metric) throws IllegalArgumentException;
 
         /**
-         * Sets the flush callback for this metrics instance.
+         * Adds a flush callback to this metrics instance.
          * <p>
          * This callback will be invoked when the metrics have been submitted to, and accepted by, the metrics server.
          *
