@@ -9,7 +9,7 @@ import org.jetbrains.annotations.Contract;
  *
  * @since 0.24.0
  */
-public sealed interface ErrorTrackerService permits SimpleErrorTrackerService {
+public interface ErrorTrackerService {
     /**
      * Returns the global/internal error tracker configured for this service.
      *

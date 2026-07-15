@@ -9,7 +9,7 @@ import java.util.Optional;
  *
  * @since 0.24.0
  */
-public sealed interface SdkInfo permits SimpleSdkInfo {
+public interface SdkInfo {
     /**
      * Get the build identifier of the project that implements this SDK.
      * <p>

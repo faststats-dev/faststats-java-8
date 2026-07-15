@@ -6,6 +6,7 @@ import dev.faststats.config.SimpleConfig;
 import dev.faststats.internal.LoggerFactory;
 import dev.faststats.internal.PlatformLoggerFactory;
 import org.bukkit.plugin.Plugin;
+import org.bukkit.scheduler.BukkitTask;
 import org.jetbrains.annotations.Contract;
 
 import java.nio.file.Path;
@@ -71,12 +72,13 @@ public final class BukkitContext extends SimpleContext {
     @Override
     protected void scheduleAtFixedRate(final Runnable task, final long initialDelay, final long period, final TimeUnit unit) {
         try {
-            final var scheduledTask = plugin.getServer().getAsyncScheduler().runAtFixedRate(
-                    plugin, ignored -> task.run(), initialDelay, period, unit
-            );
+            final io.papermc.paper.threadedregions.scheduler.ScheduledTask scheduledTask =
+                    plugin.getServer().getAsyncScheduler().runAtFixedRate(
+                            plugin, ignored -> task.run(), initialDelay, period, unit
+                    );
             cancellations.add(scheduledTask::cancel);
         } catch (final Throwable t) {
-            final var scheduledTask = plugin.getServer().getScheduler().runTaskTimerAsynchronously(
+            final BukkitTask scheduledTask = plugin.getServer().getScheduler().runTaskTimerAsynchronously(
                     plugin, task, toTicks(initialDelay, unit), toTicks(period, unit)
             );
             cancellations.add(scheduledTask::cancel);
@@ -101,7 +103,7 @@ public final class BukkitContext extends SimpleContext {
 
         @Override
         public BukkitContext create() {
-            final var loggerFactory = new PlatformLoggerFactory((level, throwable, message) -> {
+            final LoggerFactory loggerFactory = new PlatformLoggerFactory((level, throwable, message) -> {
                 plugin.getLogger().log(level.getLevel(), message, throwable);
             });
             return new BukkitContext(this, loggerFactory, plugin, token);

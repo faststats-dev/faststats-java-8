@@ -7,6 +7,7 @@ import dev.faststats.SimpleContext;
 
 import java.lang.reflect.InvocationTargetException;
 import java.nio.file.AccessDeniedException;
+import java.util.NoSuchElementException;
 
 public final class ErrorTrackerExample {
     // Context-aware: automatically tracks uncaught errors from the same class loader
@@ -39,7 +40,9 @@ public final class ErrorTrackerExample {
                 .put("component", "manual-error-handler");
 
         // Register an additional tracker for submission
-        CONTEXT.errorTrackerService().orElseThrow().registerErrorTracker(CONTEXT_UNAWARE);
+        CONTEXT.errorTrackerService()
+                .orElseThrow(() -> new NoSuchElementException("Error tracker service is not configured"))
+                .registerErrorTracker(CONTEXT_UNAWARE);
     }
 
     public static void manualTracking() {
