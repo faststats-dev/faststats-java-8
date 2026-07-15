@@ -2,10 +2,21 @@ package dev.faststats;
 
 import com.google.gson.JsonPrimitive;
 
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 
-record SimpleAttributes(ConcurrentHashMap<String, JsonPrimitive> attributes) implements Attributes {
+final class SimpleAttributes implements Attributes {
+    private final ConcurrentHashMap<String, JsonPrimitive> attributes;
+
+    SimpleAttributes(final ConcurrentHashMap<String, JsonPrimitive> attributes) {
+        this.attributes = attributes;
+    }
+
+    ConcurrentHashMap<String, JsonPrimitive> attributes() {
+        return attributes;
+    }
+
     @Override
     public Attributes put(final String key, final String value) {
         attributes.put(key, new JsonPrimitive(value));
@@ -39,5 +50,18 @@ record SimpleAttributes(ConcurrentHashMap<String, JsonPrimitive> attributes) imp
     @Override
     public void forEachPrimitive(final BiConsumer<String, JsonPrimitive> action) {
         attributes.forEach(action);
+    }
+
+    @Override
+    public boolean equals(final Object o) {
+        if (this == o) return true;
+        if (!(o instanceof SimpleAttributes)) return false;
+        final SimpleAttributes that = (SimpleAttributes) o;
+        return Objects.equals(attributes, that.attributes);
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(attributes);
     }
 }

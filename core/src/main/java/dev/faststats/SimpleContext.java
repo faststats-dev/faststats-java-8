@@ -8,6 +8,7 @@ import org.jetbrains.annotations.MustBeInvokedByOverriders;
 import org.jspecify.annotations.Nullable;
 
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.UncheckedIOException;
 import java.util.HashSet;
 import java.util.Optional;
@@ -15,7 +16,7 @@ import java.util.Properties;
 import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
-public non-sealed abstract class SimpleContext implements FastStatsContext {
+public abstract class SimpleContext implements FastStatsContext {
     private final @Token String token;
     private final Config config;
     private final SdkInfo sdkInfo;
@@ -65,7 +66,7 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
         this.errorTrackerService = config.errorTracking() && factory.errorTracker != null ? new SimpleErrorTrackerService(this, factory.errorTracker) : null;
         this.featureFlagService = factory.featureFlagService != null ? factory.featureFlagService.apply(new SimpleFeatureFlagService.Factory(this)) : null;
 
-        final var features = new HashSet<String>(3);
+        final HashSet<String> features = new HashSet<>(3);
         features.add("metrics=" + (metrics != null ? "yes" : "no"));
         features.add("error-tracking=" + (errorTrackerService != null ? "yes" : "no"));
         features.add("feature-flags=" + (featureFlagService != null ? "yes" : "no"));
@@ -77,16 +78,16 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
     }
 
     private SdkInfo constructSdkInfo(final String name) throws UncheckedIOException, IllegalStateException, IllegalArgumentException {
-        try (final var stream = getClass().getResourceAsStream("/META-INF/faststats.properties")) {
+        try (final InputStream stream = getClass().getResourceAsStream("/META-INF/faststats.properties")) {
             if (stream == null) throw new IllegalStateException("Resource '/META-INF/faststats.properties' not found");
 
-            final var properties = new Properties();
+            final Properties properties = new Properties();
             properties.load(stream);
 
-            final var version = properties.getProperty("version", null);
+            final String version = properties.getProperty("version", null);
             if (version == null) throw new IllegalStateException("Missing 'version' in faststats.properties");
 
-            final var buildId = properties.getProperty("build-id", null);
+            final String buildId = properties.getProperty("build-id", null);
 
             return new SimpleSdkInfo(name, version, buildId);
         } catch (final IOException e) {
@@ -149,7 +150,7 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
         }
         this.ready = true;
         if (errorTrackerService != null) errorTrackerService.startErrorSubmission();
-        if (metrics instanceof final SimpleMetrics simpleMetrics) simpleMetrics.startSubmitting();
+        if (metrics instanceof SimpleMetrics) ((SimpleMetrics) metrics).startSubmitting();
     }
 
     @Async.Schedule
@@ -159,8 +160,9 @@ public non-sealed abstract class SimpleContext implements FastStatsContext {
     public void shutdown() {
         if (!ready) return;
         if (errorTrackerService != null) errorTrackerService.shutdown();
-        if (featureFlagService instanceof final SimpleFeatureFlagService service) service.shutdown();
-        if (metrics instanceof final SimpleMetrics simpleMetrics) simpleMetrics.shutdown();
+        if (featureFlagService instanceof SimpleFeatureFlagService)
+            ((SimpleFeatureFlagService) featureFlagService).shutdown();
+        if (metrics instanceof SimpleMetrics) ((SimpleMetrics) metrics).shutdown();
         ready = false;
     }
 

@@ -11,7 +11,7 @@ import java.time.Duration;
  *
  * @since 0.24.0
  */
-public sealed interface FeatureFlagService permits SimpleFeatureFlagService {
+public interface FeatureFlagService {
     /**
      * Define a boolean feature flag.
      *
@@ -106,7 +106,7 @@ public sealed interface FeatureFlagService permits SimpleFeatureFlagService {
      *
      * @since 0.24.0
      */
-    sealed interface Factory permits SimpleFeatureFlagService.Factory {
+    interface Factory {
         /**
          * Sets the global targeting attributes for services created by this factory.
          * <p>

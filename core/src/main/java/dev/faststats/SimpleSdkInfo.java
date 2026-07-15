@@ -6,9 +6,7 @@ import java.util.Optional;
 import java.util.ServiceLoader;
 
 final class SimpleSdkInfo implements SdkInfo {
-    private static final UserAgentProvider userAgentProvider = ServiceLoader.load(UserAgentProvider.class)
-            .findFirst()
-            .orElseGet(SimpleSdkInfo.SimpleUserAgentProvider::new);
+    private static final UserAgentProvider userAgentProvider = loadUserAgentProvider();
 
     private final @Nullable String buildId;
     private final String name;
@@ -16,8 +14,8 @@ final class SimpleSdkInfo implements SdkInfo {
     private final String version;
 
     SimpleSdkInfo(final String name, final String version, @Nullable final String buildId) throws IllegalArgumentException {
-        if (name.isBlank()) throw new IllegalArgumentException("name must not be blank");
-        if (version.isBlank()) throw new IllegalArgumentException("version must not be blank");
+        if (name.trim().isEmpty()) throw new IllegalArgumentException("name must not be blank");
+        if (version.trim().isEmpty()) throw new IllegalArgumentException("version must not be blank");
         this.name = name;
         this.version = version;
         this.buildId = buildId;
@@ -49,5 +47,12 @@ final class SimpleSdkInfo implements SdkInfo {
         public String getUserAgent(final SdkInfo sdkInfo) {
             return "FastStats Metrics " + sdkInfo.getName() + "/" + sdkInfo.getVersion();
         }
+    }
+
+    private static UserAgentProvider loadUserAgentProvider() {
+        for (final UserAgentProvider provider : ServiceLoader.load(UserAgentProvider.class)) {
+            return provider;
+        }
+        return new SimpleUserAgentProvider();
     }
 }
