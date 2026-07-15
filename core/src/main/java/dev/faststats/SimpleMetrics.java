@@ -75,9 +75,12 @@ public abstract class SimpleMetrics extends SubmissionService implements Metrics
     private void appendCustomData(final JsonObject metrics) {
         this.metrics.forEach(metric -> {
             try {
-                if (metrics.has(metric.getId()))
+                if (metrics.has(metric.getId())) {
                     logger.warn("Skipped duplicated metrics entry: %s", metric.getId());
-                else metric.getData().ifPresent(element -> metrics.add(metric.getId(), element));
+                } else metric.getData().ifPresent(element -> {
+                    if (!element.isJsonNull()) metrics.add(metric.getId(), element);
+                    else logger.warn("Ignored illegal null entry in metric: %s", metric.getId());
+                });
             } catch (final Throwable t) {
                 logger.error("Failed to append custom metric data: %s", t, metric.getId());
                 context.errorTrackerService().ifPresent(service -> service.globalErrorTracker().trackError(t));

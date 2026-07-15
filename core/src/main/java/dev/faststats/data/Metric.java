@@ -1,6 +1,10 @@
 package dev.faststats.data;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
 
@@ -31,23 +35,76 @@ public interface Metric<T> {
      * @return an optional containing the metric data
      * @throws Exception if unable to compute the metric data
      * @implSpec The implementation must be thread-safe and pure (i.e. not modify any shared state).
+     * @see #getData()
      * @since 0.24.0
+     * @deprecated This method only adds unnecessary mental overhead. Use {@link #getData()} instead.
      */
     @Contract(pure = true)
-    Optional<? extends T> compute() throws Exception;
+    @ApiStatus.OverrideOnly
+    @Deprecated(since = "0.28.0", forRemoval = true)
+    default Optional<? extends T> compute() throws Exception {
+        return Optional.empty();
+    }
 
     /**
      * Get the metric data as a JSON element.
      *
      * @return an optional containing the metric data as {@link JsonElement}
      * @throws Exception if unable to get the metric data
-     * @implSpec The implementation must call {@link #compute()} to get the metric data
-     * and follow the same thread-safety and pureness requirements.
-     * @see #compute()
+     * @implSpec The implementation must be thread-safe and pure (i.e. not modify any shared state).
      * @since 0.24.0
      */
     @Contract(pure = true)
+    @ApiStatus.OverrideOnly
     Optional<JsonElement> getData() throws Exception;
+
+    /**
+     * Create a JsonObject metric.
+     *
+     * @param id       the source id
+     * @param callable the metric data callable
+     * @return the JsonObject metric
+     * @throws IllegalArgumentException if the source id is invalid
+     * @apiNote The callable must be thread-safe and pure (i.e. not modify any shared state).
+     * @see #getData()
+     * @since 0.28.0
+     */
+    @Contract(value = "_, _ -> new", pure = true)
+    static Metric<JsonObject> object(@SourceId final String id, final Callable<@Nullable JsonObject> callable) throws IllegalArgumentException {
+        return new SimpleMetric.Json<>(id, callable);
+    }
+
+    /**
+     * Create a JsonArray metric.
+     *
+     * @param id       the source id
+     * @param callable the metric data callable
+     * @return the JsonArray metric
+     * @throws IllegalArgumentException if the source id is invalid
+     * @apiNote The callable must be thread-safe and pure (i.e. not modify any shared state).
+     * @see #getData()
+     * @since 0.28.0
+     */
+    @Contract(value = "_, _ -> new", pure = true)
+    static Metric<JsonArray> array(@SourceId final String id, final Callable<@Nullable JsonArray> callable) throws IllegalArgumentException {
+        return new SimpleMetric.Json<>(id, callable);
+    }
+
+    /**
+     * Create a JsonPromitive metric.
+     *
+     * @param id       the source id
+     * @param callable the metric data callable
+     * @return the JsonPrimitive metric
+     * @throws IllegalArgumentException if the source id is invalid
+     * @apiNote The callable must be thread-safe and pure (i.e. not modify any shared state).
+     * @see #getData()
+     * @since 0.28.0
+     */
+    @Contract(value = "_, _ -> new", pure = true)
+    static Metric<JsonPrimitive> primitive(@SourceId final String id, final Callable<@Nullable JsonPrimitive> callable) throws IllegalArgumentException {
+        return new SimpleMetric.Json<>(id, callable);
+    }
 
     /**
      * Create a string array metric.
@@ -57,12 +114,12 @@ public interface Metric<T> {
      * @return the string array metric
      * @throws IllegalArgumentException if the source id is invalid
      * @apiNote The callable must be thread-safe and pure (i.e. not modify any shared state).
-     * @see #compute()
+     * @see #getData()
      * @since 0.24.0
      */
     @Contract(value = "_, _ -> new", pure = true)
     static Metric<String[]> stringArray(@SourceId final String id, final Callable<String @Nullable []> callable) throws IllegalArgumentException {
-        return new ArrayMetric<>(id, callable);
+        return new SimpleMetric.Array<>(id, callable);
     }
 
     /**
@@ -73,12 +130,12 @@ public interface Metric<T> {
      * @return the boolean array metric
      * @throws IllegalArgumentException if the source id is invalid
      * @apiNote The callable must be thread-safe and pure (i.e. not modify any shared state).
-     * @see #compute()
+     * @see #getData()
      * @since 0.24.0
      */
     @Contract(value = "_, _ -> new", pure = true)
     static Metric<Boolean[]> booleanArray(@SourceId final String id, final Callable<Boolean @Nullable []> callable) throws IllegalArgumentException {
-        return new ArrayMetric<>(id, callable);
+        return new SimpleMetric.Array<>(id, callable);
     }
 
     /**
@@ -89,12 +146,12 @@ public interface Metric<T> {
      * @return the number array metric
      * @throws IllegalArgumentException if the source id is invalid
      * @apiNote The callable must be thread-safe and pure (i.e. not modify any shared state).
-     * @see #compute()
+     * @see #getData()
      * @since 0.24.0
      */
     @Contract(value = "_, _ -> new", pure = true)
     static Metric<Number[]> numberArray(@SourceId final String id, final Callable<Number @Nullable []> callable) throws IllegalArgumentException {
-        return new ArrayMetric<>(id, callable);
+        return new SimpleMetric.Array<>(id, callable);
     }
 
     /**
@@ -105,12 +162,12 @@ public interface Metric<T> {
      * @return the string map metric
      * @throws IllegalArgumentException if the source id is invalid
      * @apiNote The callable must be thread-safe and pure (i.e. not modify any shared state).
-     * @see #compute()
+     * @see #getData()
      * @since 0.24.0
      */
     @Contract(value = "_, _ -> new", pure = true)
     static Metric<Map<String, ? extends String>> stringMap(@SourceId final String id, final Callable<? extends @Nullable Map<String, String>> callable) throws IllegalArgumentException {
-        return new MapMetric<>(id, callable);
+        return new SimpleMetric.Map<>(id, callable);
     }
 
     /**
@@ -121,12 +178,12 @@ public interface Metric<T> {
      * @return the boolean map metric
      * @throws IllegalArgumentException if the source id is invalid
      * @apiNote The callable must be thread-safe and pure (i.e. not modify any shared state).
-     * @see #compute()
+     * @see #getData()
      * @since 0.24.0
      */
     @Contract(value = "_, _ -> new", pure = true)
     static Metric<Map<String, ? extends Boolean>> booleanMap(@SourceId final String id, final Callable<? extends @Nullable Map<String, Boolean>> callable) throws IllegalArgumentException {
-        return new MapMetric<>(id, callable);
+        return new SimpleMetric.Map<>(id, callable);
     }
 
     /**
@@ -137,12 +194,12 @@ public interface Metric<T> {
      * @return the number map metric
      * @throws IllegalArgumentException if the source id is invalid
      * @apiNote The callable must be thread-safe and pure (i.e. not modify any shared state).
-     * @see #compute()
+     * @see #getData()
      * @since 0.24.0
      */
     @Contract(value = "_, _ -> new", pure = true)
     static Metric<Map<String, ? extends Number>> numberMap(@SourceId final String id, final Callable<? extends @Nullable Map<String, ? extends Number>> callable) throws IllegalArgumentException {
-        return new MapMetric<>(id, callable);
+        return new SimpleMetric.Map<>(id, callable);
     }
 
     /**
@@ -153,12 +210,12 @@ public interface Metric<T> {
      * @return the boolean metric
      * @throws IllegalArgumentException if the source id is invalid
      * @apiNote The callable must be thread-safe and pure (i.e. not modify any shared state).
-     * @see #compute()
+     * @see #getData()
      * @since 0.24.0
      */
     @Contract(value = "_, _ -> new", pure = true)
     static Metric<Boolean> bool(@SourceId final String id, final Callable<@Nullable Boolean> callable) throws IllegalArgumentException {
-        return new SingleValueMetric<>(id, callable);
+        return new SimpleMetric.Primitive<>(id, callable);
     }
 
     /**
@@ -169,12 +226,12 @@ public interface Metric<T> {
      * @return the string metric
      * @throws IllegalArgumentException if the source id is invalid
      * @apiNote The callable must be thread-safe and pure (i.e. not modify any shared state).
-     * @see #compute()
+     * @see #getData()
      * @since 0.24.0
      */
     @Contract(value = "_, _ -> new", pure = true)
     static Metric<String> string(@SourceId final String id, final Callable<@Nullable String> callable) throws IllegalArgumentException {
-        return new SingleValueMetric<>(id, callable);
+        return new SimpleMetric.Primitive<>(id, callable);
     }
 
     /**
@@ -185,11 +242,11 @@ public interface Metric<T> {
      * @return the number metric
      * @throws IllegalArgumentException if the source id is invalid
      * @apiNote The callable must be thread-safe and pure (i.e. not modify any shared state).
-     * @see #compute()
+     * @see #getData()
      * @since 0.24.0
      */
     @Contract(value = "_, _ -> new", pure = true)
     static Metric<Number> number(@SourceId final String id, final Callable<@Nullable Number> callable) throws IllegalArgumentException {
-        return new SingleValueMetric<>(id, callable);
+        return new SimpleMetric.Primitive<>(id, callable);
     }
 }
