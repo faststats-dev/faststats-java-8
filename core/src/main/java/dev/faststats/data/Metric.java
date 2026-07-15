@@ -1,6 +1,7 @@
 package dev.faststats.data;
 
 import com.google.gson.JsonElement;
+import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
 
@@ -45,6 +46,7 @@ public interface Metric<T> {
      * @since 0.24.0
      */
     @Contract(pure = true)
+    @ApiStatus.OverrideOnly
     Optional<JsonElement> getData() throws Exception;
 
     /**
