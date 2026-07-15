@@ -125,20 +125,20 @@ public final class SpongeContext extends SimpleContext {
         @Override
         public SpongeContext create() {
             if (token == null) throw new IllegalStateException("Token not configured");
-            final var loggerFactory = new PlatformLoggerFactory((level, throwable, message) -> {
+            final LoggerFactory loggerFactory = new PlatformLoggerFactory((level, throwable, message) -> {
                 switch (level) {
-                    case INFO -> {
+                    case INFO:
                         if (throwable == null) plugin.logger().info(message);
                         else plugin.logger().info(message, throwable);
-                    }
-                    case ERROR -> {
+                        break;
+                    case ERROR:
                         if (throwable == null) plugin.logger().error(message);
                         else plugin.logger().error(message, throwable);
-                    }
-                    case WARN -> {
+                        break;
+                    case WARN:
                         if (throwable == null) plugin.logger().warn(message);
                         else plugin.logger().warn(message, throwable);
-                    }
+                        break;
                 }
             });
             return new SpongeContext(this, loggerFactory, plugin, dataDirectory, token);

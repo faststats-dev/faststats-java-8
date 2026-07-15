@@ -20,29 +20,51 @@ final class SimpleTrackedError implements TrackedError {
 
     @Contract("_, null -> !null")
     private static @Nullable ThrowableSnapshot snapshot(final Throwable error, @Nullable Set<Throwable> visited) {
-        final var message = error.getMessage();
-        final var stackTrace = error.getStackTrace();
+        final String message = error.getMessage();
+        final StackTraceElement[] stackTrace = error.getStackTrace();
         if (error.getCause() != null && visited == null)
             visited = Collections.newSetFromMap(new IdentityHashMap<>());
         if (visited != null && !visited.add(error)) return null;
-        final var cause = error.getCause() != null
+        final ThrowableSnapshot cause = error.getCause() != null
                 ? snapshot(error.getCause(), visited)
                 : null;
-        final var trace = stackTrace.length == 0 ? new Throwable().getStackTrace() : stackTrace;
+        final StackTraceElement[] trace = stackTrace.length == 0 ? new Throwable().getStackTrace() : stackTrace;
         return new SimpleThrowableSnapshot(error.getClass(), message, cause, trace);
     }
 
-    record SimpleThrowableSnapshot(
-            Class<?> type,
-            @Nullable String message,
-            @Nullable ThrowableSnapshot cause,
-            StackTraceElement... stackTraces
-    ) implements ThrowableSnapshot {
+    static final class SimpleThrowableSnapshot implements ThrowableSnapshot {
+        private final Class<?> type;
+        private final @Nullable String message;
+        private final @Nullable ThrowableSnapshot cause;
+        private final StackTraceElement[] stackTraces;
+
+        SimpleThrowableSnapshot(final Class<?> type, @Nullable final String message, @Nullable final ThrowableSnapshot cause, final StackTraceElement[] stackTraces) {
+            this.type = type;
+            this.message = message;
+            this.cause = cause;
+            this.stackTraces = stackTraces;
+        }
+
+        @Override
+        public Class<?> type() {
+            return type;
+        }
+
+        @Override
+        public @Nullable String message() {
+            return message;
+        }
+
+        @Override
+        public @Nullable ThrowableSnapshot cause() {
+            return cause;
+        }
+
         @Override
         public StackTraceElement[] stackTraces() {
             return stackTraces.clone();
         }
-        
+
         @Override
         public boolean equals(@Nullable final Object o) {
             if (o == null || getClass() != o.getClass()) return false;

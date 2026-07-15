@@ -8,8 +8,8 @@ import dev.faststats.data.Metric;
  *
  * @since 0.1.0
  */
-public sealed interface BukkitMetrics extends Metrics permits BukkitMetricsImpl {
-    sealed interface Factory extends Metrics.Factory permits BukkitMetricsImpl.Factory {
+public interface BukkitMetrics extends Metrics {
+    interface Factory extends Metrics.Factory {
         @Override
         Factory addMetric(Metric<?> metric) throws IllegalArgumentException;
 

@@ -8,7 +8,7 @@ plugins {
 java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 
 tasks.compileJava {
-    options.release.set(17)
+    options.release.set(8)
 }
 
 configurations.compileClasspath {
@@ -22,5 +22,5 @@ repositories {
 dependencies {
     api(project(":core"))
     implementation(project(":config"))
-    compileOnly("io.papermc.paper:paper-api:1.21.11-R0.1-SNAPSHOT")
+    compileOnly("io.papermc.paper:paper-api:26.2.build.+")
 }
