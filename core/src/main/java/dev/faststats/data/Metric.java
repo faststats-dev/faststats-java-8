@@ -1,6 +1,8 @@
 package dev.faststats.data;
 
 import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonPrimitive;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.Contract;
 import org.jspecify.annotations.Nullable;
@@ -32,10 +34,16 @@ public interface Metric<T> {
      * @return an optional containing the metric data
      * @throws Exception if unable to compute the metric data
      * @implSpec The implementation must be thread-safe and pure (i.e. not modify any shared state).
+     * @see #getData()
      * @since 0.24.0
+     * @deprecated This method only adds unnecessary mental overhead. Use {@link #getData()} instead.
      */
     @Contract(pure = true)
-    Optional<? extends T> compute() throws Exception;
+    @ApiStatus.OverrideOnly
+    @Deprecated(since = "0.28.0", forRemoval = true)
+    default Optional<? extends T> compute() throws Exception {
+        return Optional.empty();
+    }
 
     /**
      * Get the metric data as a JSON element.
