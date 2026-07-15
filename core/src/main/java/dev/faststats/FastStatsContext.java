@@ -13,7 +13,7 @@ import java.util.Optional;
  *
  * @since 0.24.0
  */
-public sealed interface FastStatsContext permits SimpleContext {
+public interface FastStatsContext {
     /**
      * Get the metrics configuration shared by services created from this context.
      *

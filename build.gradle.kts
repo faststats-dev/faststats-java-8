@@ -10,7 +10,7 @@ subprojects {
         plugin("java-library")
     }
 
-    group = "dev.faststats.metrics"
+    group = "dev.faststats.metrics.j8"
 
     repositories {
         mavenCentral()
@@ -19,6 +19,20 @@ subprojects {
     extensions.configure<JavaPluginExtension> {
         withSourcesJar()
         withJavadocJar()
+    }
+
+    tasks.withType<JavaCompile>().configureEach {
+        options.release.set(8)
+    }
+
+    tasks.named<JavaCompile>("compileTestJava").configure {
+        options.release.set(17)
+    }
+
+    plugins.withId("org.jetbrains.kotlin.jvm") {
+        tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile>().configureEach {
+            compilerOptions.jvmTarget.set(org.jetbrains.kotlin.gradle.dsl.JvmTarget.JVM_1_8)
+        }
     }
 
     val generateFastStatsProperties = tasks.register("generateFastStatsProperties") {
@@ -48,24 +62,6 @@ subprojects {
         return if (extensions.extraProperties.has(name)) extensions.extraProperties.get(name).toString() else null
     }
 
-    tasks.withType<JavaCompile>().configureEach {
-        ownProperty("moduleName")?.let { moduleName ->
-            options.compilerArgs.addAll(listOf("--add-reads", "$moduleName=ALL-UNNAMED"))
-        }
-    }
-
-    tasks.withType<Test>().configureEach {
-        ownProperty("moduleName")?.let { moduleName ->
-            jvmArgs("--add-reads", "$moduleName=ALL-UNNAMED")
-        }
-    }
-
-    tasks.withType<JavaExec>().configureEach {
-        ownProperty("moduleName")?.let { moduleName ->
-            jvmArgs("--add-reads", "$moduleName=ALL-UNNAMED")
-        }
-    }
-
     tasks.javadoc {
         val options = options as StandardJavadocDocletOptions
         options.tags(
@@ -73,9 +69,6 @@ subprojects {
             "implSpec:a:Implementation Requirements:",
             "implNote:a:Implementation Note:"
         )
-        ownProperty("moduleName")?.let { moduleName ->
-            options.addStringOption("-add-reads", "$moduleName=ALL-UNNAMED")
-        }
     }
 
     afterEvaluate {
@@ -93,7 +86,7 @@ subprojects {
         extensions.configure<PublishingExtension> {
             publications.create<MavenPublication>("maven") {
                 artifactId = publishArtifactId
-                groupId = "dev.faststats.metrics"
+                groupId = "dev.faststats.metrics.j8"
 
                 pom {
                     url.set(
@@ -101,7 +94,7 @@ subprojects {
                             ?: throw IllegalStateException("No docs URL provided by \"${project.path}\"")
                     )
                     scm {
-                        val repository = "faststats-dev/faststats-java"
+                        val repository = "faststats-dev/faststats-java-8"
                         url.set("https://github.com/$repository")
                         connection.set("scm:git:git://github.com/$repository.git")
                         developerConnection.set("scm:git:ssh://github.com/$repository.git")

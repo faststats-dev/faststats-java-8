@@ -5,10 +5,10 @@ plugins {
     id("maven-publish")
 }
 
-java.toolchain.languageVersion = JavaLanguageVersion.of(17)
+java.toolchain.languageVersion = JavaLanguageVersion.of(25)
 
 tasks.compileJava {
-    options.release.set(17)
+    options.release.set(8)
 }
 
 dependencies {
@@ -19,6 +19,6 @@ dependencies {
     testImplementation(project(":config"))
     testImplementation("com.google.code.gson:gson:2.14.0")
     testImplementation("org.junit.jupiter:junit-jupiter")
-    testImplementation(platform("org.junit:junit-bom:6.1.1"))
+    testImplementation(platform("org.junit:junit-bom:5.10.5"))
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
 }

@@ -7,6 +7,7 @@ import dev.faststats.FeatureFlagService;
 import dev.faststats.SimpleContext;
 
 import java.time.Duration;
+import java.util.NoSuchElementException;
 
 public final class FeatureFlagExample {
     public static final FastStatsContext CONTEXT = getContextFactory()
@@ -20,7 +21,8 @@ public final class FeatureFlagExample {
                     .create())
             .create();
 
-    public static final FeatureFlagService SERVICE = CONTEXT.featureFlagService().orElseThrow();
+    public static final FeatureFlagService SERVICE = CONTEXT.featureFlagService()
+            .orElseThrow(() -> new NoSuchElementException("Feature flag service is not configured"));
 
     // Define flags with default values
     public static final FeatureFlag<Boolean> NEW_COMMANDS = SERVICE.define("new_commands", false);

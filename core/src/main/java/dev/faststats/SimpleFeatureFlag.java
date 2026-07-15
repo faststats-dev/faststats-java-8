@@ -28,11 +28,11 @@ final class SimpleFeatureFlag<T> implements FeatureFlag<T> {
         this.defaultValue = defaultValue;
         this.attributes = attributes;
         this.service = service;
-        if (defaultValue instanceof final String string) {
+        if (defaultValue instanceof String) {
             this.type = Type.STRING;
-        } else if (defaultValue instanceof final Number number) {
+        } else if (defaultValue instanceof Number) {
             this.type = Type.NUMBER;
-        } else if (defaultValue instanceof final Boolean bool) {
+        } else if (defaultValue instanceof Boolean) {
             this.type = Type.BOOLEAN;
         } else throw new IllegalArgumentException("Unsupported type: " + defaultValue.getClass().getName());
     }
@@ -50,11 +50,16 @@ final class SimpleFeatureFlag<T> implements FeatureFlag<T> {
     @Override
     @SuppressWarnings("unchecked")
     public Class<T> getTypeClass() {
-        return (Class<T>) switch (type) {
-            case STRING -> String.class;
-            case NUMBER -> Number.class;
-            case BOOLEAN -> Boolean.class;
-        };
+        switch (type) {
+            case STRING:
+                return (Class<T>) String.class;
+            case NUMBER:
+                return (Class<T>) Number.class;
+            case BOOLEAN:
+                return (Class<T>) Boolean.class;
+            default:
+                throw new IllegalStateException("Unknown feature flag type: " + type);
+        }
     }
 
     public void setValue(@Nullable final T value) {
@@ -72,7 +77,7 @@ final class SimpleFeatureFlag<T> implements FeatureFlag<T> {
 
     @Override
     public Optional<Instant> getExpiration() {
-        final var lastFetch = this.lastFetch;
+        final Long lastFetch = this.lastFetch;
         if (lastFetch == null) return Optional.empty();
         return Optional.of(Instant.ofEpochMilli(lastFetch).plus(service.getTTL()));
     }
@@ -84,14 +89,14 @@ final class SimpleFeatureFlag<T> implements FeatureFlag<T> {
 
     @Override
     public boolean isExpired() {
-        final var lastFetch = this.lastFetch;
+        final Long lastFetch = this.lastFetch;
         if (lastFetch == null) return true;
         return System.currentTimeMillis() - lastFetch > service.getTTL().toMillis();
     }
 
     @Override
     public CompletableFuture<T> whenReady() {
-        final var cached = value;
+        final T cached = value;
         if (cached == null || isExpired()) return fetch();
         return CompletableFuture.completedFuture(cached);
     }

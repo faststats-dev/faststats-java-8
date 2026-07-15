@@ -17,12 +17,12 @@ public final class MetricTypesExample {
 
     // Json metrics
     public static final Metric<JsonObject> JSON_OBJECT = Metric.object("nested_example", () -> {
-        var object = new JsonObject();
+        JsonObject object = new JsonObject();
         object.addProperty("scope", "example");
         return object;
     });
     public static final Metric<JsonArray> JSON_ARRAY = Metric.array("examples", () -> {
-        var array = new JsonArray();
+        JsonArray array = new JsonArray();
         array.add("example");
         return array;
     });

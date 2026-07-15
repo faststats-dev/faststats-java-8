@@ -11,7 +11,7 @@ import dev.faststats.internal.LoggerFactory;
 import dev.faststats.internal.PlatformLoggerFactory;
 import org.jetbrains.annotations.Contract;
 
-import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.Set;
 import java.util.concurrent.CopyOnWriteArraySet;
 import java.util.concurrent.TimeUnit;
@@ -26,7 +26,7 @@ public final class NukkitContext extends SimpleContext {
     final PluginBase plugin;
 
     private NukkitContext(final Factory factory, final LoggerFactory loggerFactory, final PluginBase plugin, @Token final String token) {
-        super(factory, loggerFactory, SimpleConfig.read(Path.of(plugin.getServer().getPluginPath())
+        super(factory, loggerFactory, SimpleConfig.read(Paths.get(plugin.getServer().getPluginPath())
                 .resolve("faststats").resolve("config.properties"), loggerFactory), "nukkit", token);
         this.plugin = plugin;
         initializeServices(factory);
@@ -55,7 +55,7 @@ public final class NukkitContext extends SimpleContext {
 
     @Override
     protected void scheduleAtFixedRate(final Runnable task, final long initialDelay, final long period, final TimeUnit unit) {
-        final var scheduledTask = plugin.getServer().getScheduler().scheduleDelayedRepeatingTask(
+        final TaskHandler scheduledTask = plugin.getServer().getScheduler().scheduleDelayedRepeatingTask(
                 plugin, task, toTicks(initialDelay, unit), toTicks(period, unit), true
         );
         tasks.add(scheduledTask);
@@ -79,11 +79,17 @@ public final class NukkitContext extends SimpleContext {
 
         @Override
         public NukkitContext create() {
-            final var loggerFactory = new PlatformLoggerFactory((level, t, message) -> {
+            final LoggerFactory loggerFactory = new PlatformLoggerFactory((level, t, message) -> {
                 switch (level) {
-                    case INFO -> plugin.getLogger().info(message, t);
-                    case ERROR -> plugin.getLogger().error(message, t);
-                    case WARN -> plugin.getLogger().warning(message, t);
+                    case INFO:
+                        plugin.getLogger().info(message, t);
+                        break;
+                    case ERROR:
+                        plugin.getLogger().error(message, t);
+                        break;
+                    case WARN:
+                        plugin.getLogger().warning(message, t);
+                        break;
                 }
             });
             return new NukkitContext(this, loggerFactory, plugin, token);
