@@ -1,5 +1,6 @@
 package dev.faststats.data;
 
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonPrimitive;
@@ -56,6 +57,54 @@ public interface Metric<T> {
     @Contract(pure = true)
     @ApiStatus.OverrideOnly
     Optional<JsonElement> getData() throws Exception;
+
+    /**
+     * Create a JsonObject metric.
+     *
+     * @param id       the source id
+     * @param callable the metric data callable
+     * @return the JsonObject metric
+     * @throws IllegalArgumentException if the source id is invalid
+     * @apiNote The callable must be thread-safe and pure (i.e. not modify any shared state).
+     * @see #getData()
+     * @since 0.28.0
+     */
+    @Contract(value = "_, _ -> new", pure = true)
+    static Metric<JsonObject> object(@SourceId final String id, final Callable<@Nullable JsonObject> callable) throws IllegalArgumentException {
+        return new SimpleMetric.Json<>(id, callable);
+    }
+
+    /**
+     * Create a JsonArray metric.
+     *
+     * @param id       the source id
+     * @param callable the metric data callable
+     * @return the JsonArray metric
+     * @throws IllegalArgumentException if the source id is invalid
+     * @apiNote The callable must be thread-safe and pure (i.e. not modify any shared state).
+     * @see #getData()
+     * @since 0.28.0
+     */
+    @Contract(value = "_, _ -> new", pure = true)
+    static Metric<JsonArray> array(@SourceId final String id, final Callable<@Nullable JsonArray> callable) throws IllegalArgumentException {
+        return new SimpleMetric.Json<>(id, callable);
+    }
+
+    /**
+     * Create a JsonPromitive metric.
+     *
+     * @param id       the source id
+     * @param callable the metric data callable
+     * @return the JsonPrimitive metric
+     * @throws IllegalArgumentException if the source id is invalid
+     * @apiNote The callable must be thread-safe and pure (i.e. not modify any shared state).
+     * @see #getData()
+     * @since 0.28.0
+     */
+    @Contract(value = "_, _ -> new", pure = true)
+    static Metric<JsonPrimitive> primitive(@SourceId final String id, final Callable<@Nullable JsonPrimitive> callable) throws IllegalArgumentException {
+        return new SimpleMetric.Json<>(id, callable);
+    }
 
     /**
      * Create a string array metric.
