@@ -48,13 +48,13 @@ public final class FastStatsBungee {
      */
     @Contract(value = "_ -> new", mutates = "io")
     public static FastStatsContext.Builder builder(final Plugin plugin) {
-        final var loggerFactory = new PlatformLoggerFactory((level, throwable, message) -> {
+        final PlatformLoggerFactory loggerFactory = new PlatformLoggerFactory((level, throwable, message) -> {
             plugin.getLogger().log(level.getLevel(), message, throwable);
         });
-        final var server = plugin.getProxy();
-        final var config = SimpleConfig.read(server.getPluginsFolder().toPath()
+        final net.md_5.bungee.api.ProxyServer server = plugin.getProxy();
+        final SimpleConfig config = SimpleConfig.read(server.getPluginsFolder().toPath()
                 .resolve("faststats").resolve("config.properties"), loggerFactory);
-        final var name = plugin.getDescription().getName();
+        final String name = plugin.getDescription().getName();
         return new SimpleContext.Builder("bungeecord")
                 .loggerFactory(loggerFactory)
                 .config(config)

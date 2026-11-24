@@ -27,15 +27,15 @@ public final class SimpleMetrics extends SubmissionService implements Metrics {
     @Contract(mutates = "io")
     private SimpleMetrics(final Factory factory) {
         super(factory.context);
-        this.metrics = Set.copyOf(factory.metrics);
+        this.metrics = java.util.Collections.unmodifiableSet(new java.util.HashSet<>(factory.metrics));
         this.flush = factory.flush;
     }
 
     @Async.Schedule
     void startSubmitting() {
         logger.info("Starting metrics submission task");
-        final var initialDelay = TimeUnit.SECONDS.toMillis(Long.getLong("faststats.initial-delay", 30));
-        final var period = TimeUnit.MINUTES.toMillis(30);
+        final long initialDelay = TimeUnit.SECONDS.toMillis(Long.getLong("faststats.initial-delay", 30));
+        final long period = TimeUnit.MINUTES.toMillis(30);
         context.scheduleAtFixedRate(this::submit, initialDelay, period, TimeUnit.MILLISECONDS);
     }
 
@@ -76,8 +76,8 @@ public final class SimpleMetrics extends SubmissionService implements Metrics {
     }
 
     private JsonObject createData() {
-        final var data = new JsonObject();
-        final var metrics = new JsonObject();
+        final JsonObject data = new JsonObject();
+        final JsonObject metrics = new JsonObject();
 
         context.appendPlatformData(metrics);
         appendCustomData(metrics);
@@ -125,7 +125,7 @@ public final class SimpleMetrics extends SubmissionService implements Metrics {
 
         @Override
         public Factory onFlush(final Runnable flush) {
-            final var runnable = this.flush;
+            final Runnable runnable = this.flush;
             if (runnable == null) {
                 this.flush = flush;
             } else this.flush = () -> {

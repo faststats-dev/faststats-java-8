@@ -7,7 +7,7 @@ import dev.faststats.config.SimpleConfig;
 import dev.faststats.internal.PlatformLoggerFactory;
 import org.jetbrains.annotations.Contract;
 
-import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
 
 /**
@@ -54,15 +54,21 @@ public final class FastStatsNukkit {
      */
     @Contract(value = "_ -> new", mutates = "io")
     public static FastStatsContext.Builder builder(final PluginBase plugin) {
-        final var loggerFactory = new PlatformLoggerFactory((level, t, message) -> {
+        final PlatformLoggerFactory loggerFactory = new PlatformLoggerFactory((level, t, message) -> {
             switch (level) {
-                case INFO -> plugin.getLogger().info(message, t);
-                case ERROR -> plugin.getLogger().error(message, t);
-                case WARN -> plugin.getLogger().warning(message, t);
+                case INFO:
+                    plugin.getLogger().info(message, t);
+                    break;
+                case ERROR:
+                    plugin.getLogger().error(message, t);
+                    break;
+                case WARN:
+                    plugin.getLogger().warning(message, t);
+                    break;
             }
         });
-        final var server = plugin.getServer();
-        final var config = SimpleConfig.read(Path.of(server.getPluginPath())
+        final cn.nukkit.Server server = plugin.getServer();
+        final SimpleConfig config = SimpleConfig.read(Paths.get(server.getPluginPath())
                 .resolve("faststats").resolve("config.properties"), loggerFactory);
         return new SimpleContext.Builder("nukkit")
                 .loggerFactory(loggerFactory)

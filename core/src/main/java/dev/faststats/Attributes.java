@@ -15,7 +15,7 @@ import java.util.function.BiConsumer;
  *
  * @since 0.24.0
  */
-public sealed interface Attributes permits SimpleAttributes {
+public interface Attributes {
     /**
      * Create new empty attributes.
      *
@@ -36,7 +36,7 @@ public sealed interface Attributes permits SimpleAttributes {
      */
     @Contract(value = "_ -> new", pure = true)
     static Attributes copyOf(final Attributes attributes) {
-        final var entries = ((SimpleAttributes) attributes).attributes();
+        final ConcurrentHashMap<String, JsonPrimitive> entries = ((SimpleAttributes) attributes).attributes();
         return new SimpleAttributes(new ConcurrentHashMap<>(entries));
     }
 
@@ -114,9 +114,9 @@ public sealed interface Attributes permits SimpleAttributes {
      */
     @Contract(value = "_, _ -> new", pure = true)
     static Attributes join(@Nullable final Attributes first, @Nullable final Attributes second) {
-        final var attributes = new ConcurrentHashMap<String, JsonPrimitive>();
-        if (first instanceof final SimpleAttributes simple) attributes.putAll(simple.attributes());
-        if (second instanceof final SimpleAttributes simple) attributes.putAll(simple.attributes());
+        final ConcurrentHashMap<String, JsonPrimitive> attributes = new ConcurrentHashMap<>();
+        if (first instanceof SimpleAttributes) attributes.putAll(((SimpleAttributes) first).attributes());
+        if (second instanceof SimpleAttributes) attributes.putAll(((SimpleAttributes) second).attributes());
         return new SimpleAttributes(attributes);
     }
 }

@@ -1,9 +1,6 @@
 include(
     "bukkit",
     "bungeecord",
-    "hytale",
-    "minestom",
     "nukkit",
     "sponge",
-    "velocity",
 )

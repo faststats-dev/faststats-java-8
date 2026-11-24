@@ -55,9 +55,9 @@ final class SimpleErrorTrackerService extends SubmissionService implements Error
     }
 
     private static void handleUncaughtException(final Thread thread, final Throwable error) {
-        for (final var tracker : DISPATCHER_TRACKERS) {
+        for (final SimpleErrorTracker tracker : DISPATCHER_TRACKERS) {
             try {
-                final var loader = tracker.attachedLoader();
+                final ClassLoader loader = tracker.attachedLoader();
                 if (loader != null && !ErrorHelper.isSameLoader(thread, loader, error)) continue;
                 if (tracker.isContextErrorIgnored(thread, error)) continue;
                 tracker.trackError(error).handled(false);
@@ -69,14 +69,14 @@ final class SimpleErrorTrackerService extends SubmissionService implements Error
             }
         }
 
-        final var handler = originalHandler;
+        final Thread.UncaughtExceptionHandler handler = originalHandler;
         if (handler != null) handler.uncaughtException(thread, error);
     }
 
     private void submit() {
         if (!context.isSubmitting() || !context.getConfig().errorTracking()) return;
         try {
-            final var data = createData();
+            final JsonObject data = createData();
             if (data == null) return;
 
             if (submit(url, data, "errors")) clear();
@@ -87,10 +87,10 @@ final class SimpleErrorTrackerService extends SubmissionService implements Error
 
     @VisibleForTesting
     public @Nullable JsonObject createData() {
-        final var globalErrorTrackerData = globalErrorTracker.getData(false);
+        final JsonArray globalErrorTrackerData = globalErrorTracker.getData(false);
         if (errorTrackers.isEmpty() && globalErrorTrackerData.isEmpty()) return null;
 
-        final var data = new JsonObject();
+        final JsonObject data = new JsonObject();
         context.getSdkInfo().getBuildId().ifPresent(id -> data.addProperty("buildId", id));
         data.addProperty("identifier", context.getConfig().serverId().toString());
         data.addProperty("language", "java");
@@ -98,13 +98,13 @@ final class SimpleErrorTrackerService extends SubmissionService implements Error
         data.addProperty("sdk_name", context.getSdkInfo().getName());
         data.addProperty("sdk_version", context.getSdkInfo().getVersion());
 
-        final var defaultContext = new JsonObject();
+        final JsonObject defaultContext = new JsonObject();
         context.appendPlatformData(defaultContext);
         context.metrics().ifPresent(metrics -> ((SimpleMetrics) metrics).appendCustomData(defaultContext));
         globalErrorTracker.getAttributes().forEachPrimitive(defaultContext::add);
         data.add("context", defaultContext);
 
-        final var errors = new JsonArray();
+        final JsonArray errors = new JsonArray();
         errors.addAll(globalErrorTrackerData);
         errorTrackers.forEach(tracker -> errors.addAll(tracker.getFullData()));
         data.add("errors", errors);
@@ -118,8 +118,8 @@ final class SimpleErrorTrackerService extends SubmissionService implements Error
 
     void startErrorSubmission() {
         logger.info("Starting errors submission task");
-        final var initialDelay = TimeUnit.SECONDS.toMillis(Long.getLong("faststats.initial-delay", 30));
-        final var period = TimeUnit.MINUTES.toMillis(30);
+        final long initialDelay = TimeUnit.SECONDS.toMillis(Long.getLong("faststats.initial-delay", 30));
+        final long period = TimeUnit.MINUTES.toMillis(30);
         context.scheduleAtFixedRate(this::submit, initialDelay, period, TimeUnit.MILLISECONDS);
     }
 

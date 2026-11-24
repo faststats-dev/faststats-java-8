@@ -80,8 +80,8 @@ public final class SimpleContext implements FastStatsContext {
         this.clientApplication = builder.clientApplication;
         this.scheduler = builder.scheduler;
         this.defaultMetrics = builder.defaultMetrics;
-        this.readyHooks = List.copyOf(builder.readyHooks);
-        this.shutdownHooks = List.copyOf(builder.shutdownHooks);
+        this.readyHooks = java.util.Collections.unmodifiableList(new ArrayList<>(builder.readyHooks));
+        this.shutdownHooks = java.util.Collections.unmodifiableList(new ArrayList<>(builder.shutdownHooks));
 
         if (!enabled) {
             logger.warn("No valid FastStats token provided for %s, FastStats is disabled. Pass a token to the factory or inject it at build time into %s",
@@ -127,16 +127,16 @@ public final class SimpleContext implements FastStatsContext {
     }
 
     private static SdkInfo constructSdkInfo(final String name) throws UncheckedIOException, IllegalStateException, IllegalArgumentException {
-        try (final var stream = SimpleContext.class.getResourceAsStream("/META-INF/faststats.properties")) {
+        try (final java.io.InputStream stream = SimpleContext.class.getResourceAsStream("/META-INF/faststats.properties")) {
             if (stream == null) throw new IllegalStateException("Resource '/META-INF/faststats.properties' not found");
 
-            final var properties = new Properties();
+            final Properties properties = new Properties();
             properties.load(stream);
 
-            final var version = properties.getProperty("version", null);
+            final String version = properties.getProperty("version", null);
             if (version == null) throw new IllegalStateException("Missing 'version' in faststats.properties");
 
-            final var buildId = properties.getProperty("build-id", null);
+            final String buildId = properties.getProperty("build-id", null);
 
             return new SimpleSdkInfo(name, version, buildId);
         } catch (final IOException e) {
@@ -302,12 +302,12 @@ public final class SimpleContext implements FastStatsContext {
             logger.warn("FastStats context for %s was made ready twice; ignoring.", projectName);
             return;
         }
-        for (final var hook : readyHooks) {
+        for (final Consumer<FastStatsContext> hook : readyHooks) {
             try {
                 hook.accept(this);
             } catch (final Throwable t) {
-                logger.print(Logger.LogLevel.ERROR, t, "Failed to make the FastStats context for %s ready: %s"
-                        .formatted(projectName, t.getMessage()));
+                logger.print(Logger.LogLevel.ERROR, t, String.format("Failed to make the FastStats context for %s ready: %s",
+                        projectName, t.getMessage()));
                 return;
             }
         }
@@ -322,11 +322,11 @@ public final class SimpleContext implements FastStatsContext {
         }
         synchronized (this) {
             if (executor == null) executor = Executors.newSingleThreadScheduledExecutor(runnable -> {
-                final var thread = new Thread(runnable, "faststats-submitter");
+                final Thread thread = new Thread(runnable, "faststats-submitter");
                 thread.setDaemon(true);
                 return thread;
             });
-            final var future = executor.scheduleAtFixedRate(task, initialDelay, period, unit);
+            final java.util.concurrent.ScheduledFuture<?> future = executor.scheduleAtFixedRate(task, initialDelay, period, unit);
             cancellations.add(() -> future.cancel(true));
         }
     }
@@ -345,7 +345,7 @@ public final class SimpleContext implements FastStatsContext {
             executor = null;
         }
 
-        for (final var hook : shutdownHooks) {
+        for (final Consumer<FastStatsContext> hook : shutdownHooks) {
             try {
                 hook.accept(this);
             } catch (final Throwable t) {
@@ -380,10 +380,10 @@ public final class SimpleContext implements FastStatsContext {
      */
     @Contract(mutates = "io")
     public static @Nullable String readToken(final ClassLoader loader, final String id) {
-        final var path = TOKEN_RESOURCE_DIRECTORY + id + ".token";
-        try (final var stream = loader.getResourceAsStream(path)) {
+        final String path = TOKEN_RESOURCE_DIRECTORY + id + ".token";
+        try (final java.io.InputStream stream = loader.getResourceAsStream(path)) {
             if (stream == null) return null;
-            final var token = new String(stream.readAllBytes(), UTF_8).strip();
+            final String token = SubmissionService.readFully(stream).trim();
             return token.matches(Token.PATTERN) ? token : null;
         } catch (final IOException e) {
             return null;
@@ -524,7 +524,7 @@ public final class SimpleContext implements FastStatsContext {
      *
      * @since 0.33.0
      */
-    public static sealed class Builder implements FastStatsContext.Builder {
+    public static class Builder implements FastStatsContext.Builder {
         private final String sdkName;
 
         private @Nullable LoggerFactory loggerFactory;
@@ -722,9 +722,9 @@ public final class SimpleContext implements FastStatsContext {
                 throw new IllegalStateException("Context created without any service attached, was this intentional?");
             if (token != null && !token.matches(Token.PATTERN))
                 throw new IllegalArgumentException("Invalid token '" + token + "', must match '" + Token.PATTERN + "'");
-            final var token = this.token != null ? this.token
+            final String token = this.token != null ? this.token
                     : tokenLoader != null && tokenId != null ? readToken(tokenLoader, tokenId) : null;
-            final var context = new SimpleContext(this, token);
+            final SimpleContext context = new SimpleContext(this, token);
             buildHooks.forEach(hook -> hook.accept(context));
             return context;
         }

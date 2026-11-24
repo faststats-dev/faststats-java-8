@@ -2,7 +2,7 @@ package dev.faststats.internal;
 
 import org.jetbrains.annotations.Contract;
 
-public sealed abstract class LoggerFactory permits PlatformLoggerFactory {
+public abstract class LoggerFactory {
     private volatile boolean debug;
 
     @Contract(value = "_ -> new", pure = true)

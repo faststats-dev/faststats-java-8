@@ -8,7 +8,7 @@ import org.jspecify.annotations.Nullable;
  *
  * @since 0.24.0
  */
-public sealed interface TrackedError permits SimpleTrackedError {
+public interface TrackedError {
     /**
      * Returns a snapshot of the tracked error.
      *
@@ -26,7 +26,7 @@ public sealed interface TrackedError permits SimpleTrackedError {
      *
      * @since 0.30.0
      */
-    sealed interface ThrowableSnapshot permits SimpleTrackedError.SimpleThrowableSnapshot {
+    interface ThrowableSnapshot {
         /**
          * Returns the throwable class.
          *

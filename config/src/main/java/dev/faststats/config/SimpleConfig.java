@@ -23,33 +23,30 @@ public final class SimpleConfig implements Config {
     private static final int CONFIG_VERSION = 3;
     private static final String CONSENT_SCREEN_SHOWN = "consent-screen-shown";
 
-    private static final String COMMENT = """
-             FastStats (https://faststats.dev) collects pseudonymous usage statistics and errors.
-            # This helps developers understand how their projects are used in the real world.
-            #
-            # No IP addresses, player data, or personal information is collected.
-            # The server ID below is randomly generated and can be regenerated at any time.
-            #
-            # Enabling metrics has no noticeable performance impact.
-            # Keeping FastStats enabled is recommended.
-            # To disable all FastStats features, set 'enabled=false'.
-            # To disable only metrics submission, set 'submitMetrics=false'.
-            # To disable only additional metrics, set 'submitAdditionalMetrics=false'.
-            # To disable only error tracking, set 'submitErrors=false'.
-            #
-            # If you suspect a developer is collecting personal data or bypassing any opt-out option,
-            # please report it at: https://faststats.dev/abuse
-            #
-            # For more information, visit: https://faststats.dev/info
-            """;
-    private static final String ONBOARDING_MESSAGE = """
-            This plugin uses FastStats to collect pseudonymous usage statistics and errors.
-            No personal or identifying information is ever collected.
-            To opt out, set 'enabled=false' in the metrics configuration file.
-            Learn more at: https://faststats.dev/info
-            
-            Since this is your first start with FastStats, submission will not start
-            until after a restart, to allow you to opt out if you prefer.""";
+    private static final String COMMENT = " FastStats (https://faststats.dev) collects pseudonymous usage statistics and errors.\n"
+            + "# This helps developers understand how their projects are used in the real world.\n"
+            + "#\n"
+            + "# No IP addresses, player data, or personal information is collected.\n"
+            + "# The server ID below is randomly generated and can be regenerated at any time.\n"
+            + "#\n"
+            + "# Enabling metrics has no noticeable performance impact.\n"
+            + "# Keeping FastStats enabled is recommended.\n"
+            + "# To disable all FastStats features, set 'enabled=false'.\n"
+            + "# To disable only metrics submission, set 'submitMetrics=false'.\n"
+            + "# To disable only additional metrics, set 'submitAdditionalMetrics=false'.\n"
+            + "# To disable only error tracking, set 'submitErrors=false'.\n"
+            + "#\n"
+            + "# If you suspect a developer is collecting personal data or bypassing any opt-out option,\n"
+            + "# please report it at: https://faststats.dev/abuse\n"
+            + "#\n"
+            + "# For more information, visit: https://faststats.dev/info\n";
+    private static final String ONBOARDING_MESSAGE = "This plugin uses FastStats to collect pseudonymous usage statistics and errors.\n"
+            + "No personal or identifying information is ever collected.\n"
+            + "To opt out, set 'enabled=false' in the metrics configuration file.\n"
+            + "Learn more at: https://faststats.dev/info\n"
+            + "\n"
+            + "Since this is your first start with FastStats, submission will not start\n"
+            + "until after a restart, to allow you to opt out if you prefer.";
 
     private final Path file;
     private final UUID serverId;
@@ -170,28 +167,28 @@ public final class SimpleConfig implements Config {
      */
     @Contract(mutates = "io")
     public static SimpleConfig read(final Path file, final LoggerFactory factory, final boolean client) throws RuntimeException {
-        final var logger = factory.getLogger(SimpleConfig.class);
+        final Logger logger = factory.getLogger(SimpleConfig.class);
 
-        final var debugFlag = Boolean.getBoolean("faststats.debug");
-        final var enabledFlag = enabledFlag();
+        final boolean debugFlag = Boolean.getBoolean("faststats.debug");
+        final boolean enabledFlag = enabledFlag();
 
-        final var properties = readOrEmpty(file);
-        final var firstRun = properties == null;
-        final var saveConfig = new AtomicBoolean(firstRun);
+        final Properties properties = readOrEmpty(file);
+        final boolean firstRun = properties == null;
+        final AtomicBoolean saveConfig = new AtomicBoolean(firstRun);
 
-        final var serverId = parse(properties, saveConfig, "serverId", UUID::randomUUID, value -> {
-            final var corrected = value.length() > 36 ? value.substring(0, 36) : value;
-            final var uuid = UUID.fromString(corrected);
+        final UUID serverId = parse(properties, saveConfig, "serverId", UUID::randomUUID, value -> {
+            final String corrected = value.length() > 36 ? value.substring(0, 36) : value;
+            final UUID uuid = UUID.fromString(corrected);
             if (!value.equals(uuid.toString())) saveConfig.set(true);
             return uuid;
         }, logger);
-        final var configVersion = parse(properties, saveConfig, "configVersion", null, Integer::parseInt, logger);
-        final var enabled = parse(properties, saveConfig, "enabled", () -> true, Boolean::parseBoolean, logger);
-        final var submitMetrics = parse(properties, saveConfig, "submitMetrics", () -> true, Boolean::parseBoolean, logger);
-        final var errorTracking = parse(properties, saveConfig, "submitErrors", () -> true, Boolean::parseBoolean, logger);
-        final var additionalMetrics = parse(properties, saveConfig, "submitAdditionalMetrics", () -> true, Boolean::parseBoolean, logger);
-        final var debug = parse(properties, saveConfig, "debug", () -> false, Boolean::parseBoolean, logger);
-        final var consentScreenShown = client && parse(properties, saveConfig, CONSENT_SCREEN_SHOWN, () -> false, Boolean::parseBoolean, logger);
+        final Integer configVersion = parse(properties, saveConfig, "configVersion", null, Integer::parseInt, logger);
+        final boolean enabled = parse(properties, saveConfig, "enabled", () -> true, Boolean::parseBoolean, logger);
+        final boolean submitMetrics = parse(properties, saveConfig, "submitMetrics", () -> true, Boolean::parseBoolean, logger);
+        final boolean errorTracking = parse(properties, saveConfig, "submitErrors", () -> true, Boolean::parseBoolean, logger);
+        final boolean additionalMetrics = parse(properties, saveConfig, "submitAdditionalMetrics", () -> true, Boolean::parseBoolean, logger);
+        final boolean debug = parse(properties, saveConfig, "debug", () -> false, Boolean::parseBoolean, logger);
+        final boolean consentScreenShown = client && parse(properties, saveConfig, CONSENT_SCREEN_SHOWN, () -> false, Boolean::parseBoolean, logger);
 
         if (configVersion == null || configVersion < CONFIG_VERSION) saveConfig.set(true);
         else if (configVersion > CONFIG_VERSION) saveConfig.set(false);
@@ -200,8 +197,8 @@ public final class SimpleConfig implements Config {
             if (configVersion != null && configVersion < CONFIG_VERSION)
                 logger.info("Updating config version from %s to %s", configVersion, CONFIG_VERSION);
             Files.createDirectories(file.getParent());
-            try (final var writer = Files.newBufferedWriter(file, UTF_8)) {
-                final var store = new Properties();
+            try (final java.io.BufferedWriter writer = Files.newBufferedWriter(file, UTF_8)) {
+                final Properties store = new Properties();
 
                 store.setProperty("enabled", Boolean.toString(enabled));
                 store.setProperty("submitMetrics", Boolean.toString(submitMetrics));
@@ -236,7 +233,7 @@ public final class SimpleConfig implements Config {
 
     @Contract(mutates = "io")
     public synchronized void persist() throws RuntimeException {
-        var properties = readOrEmpty(file);
+        Properties properties = readOrEmpty(file);
         if (properties == null) {
             // the file was deleted after it was read, recreate it
             properties = new Properties();
@@ -257,7 +254,7 @@ public final class SimpleConfig implements Config {
         } catch (final IOException e) {
             throw new RuntimeException("Failed to create metrics config directory", e);
         }
-        try (final var writer = Files.newBufferedWriter(file, UTF_8)) {
+        try (final java.io.BufferedWriter writer = Files.newBufferedWriter(file, UTF_8)) {
             properties.store(writer, COMMENT);
         } catch (final IOException e) {
             throw new RuntimeException("Failed to save metrics config", e);
@@ -278,7 +275,7 @@ public final class SimpleConfig implements Config {
             saveConfig.set(true);
             return defaultValue != null ? defaultValue.get() : null;
         }
-        final var property = properties.getProperty(key);
+        final String property = properties.getProperty(key);
         if (property == null) {
             logger.warn("Missing configuration property: %s", key);
             saveConfig.set(true);
@@ -295,8 +292,8 @@ public final class SimpleConfig implements Config {
 
     private static @Nullable Properties readOrEmpty(final Path file) throws RuntimeException {
         if (!Files.isRegularFile(file)) return null;
-        try (final var reader = Files.newBufferedReader(file, UTF_8)) {
-            final var properties = new Properties();
+        try (final java.io.BufferedReader reader = Files.newBufferedReader(file, UTF_8)) {
+            final Properties properties = new Properties();
             properties.load(reader);
             return properties;
         } catch (final IOException e) {
@@ -308,14 +305,14 @@ public final class SimpleConfig implements Config {
         if (Boolean.getBoolean("faststats.first-run")) return false;
 
         if (firstRun()) {
-            var separatorLength = 0;
-            final var split = ONBOARDING_MESSAGE.split("\n");
-            for (final var s : split) if (s.length() > separatorLength) separatorLength = s.length();
+            int separatorLength = 0;
+            final String[] split = ONBOARDING_MESSAGE.split("\n");
+            for (final String s : split) if (s.length() > separatorLength) separatorLength = s.length();
 
-            final var logger = loggerFactory.getLogger(getClass());
-            logger.print(Logger.LogLevel.INFO, null, "-".repeat(separatorLength));
-            for (final var s : split) logger.print(Logger.LogLevel.INFO, null, s);
-            logger.print(Logger.LogLevel.INFO, null, "-".repeat(separatorLength));
+            final Logger logger = loggerFactory.getLogger(getClass());
+            logger.print(Logger.LogLevel.INFO, null, repeat('-', separatorLength));
+            for (final String s : split) logger.print(Logger.LogLevel.INFO, null, s);
+            logger.print(Logger.LogLevel.INFO, null, repeat('-', separatorLength));
 
             System.setProperty("faststats.first-run", "true");
             return false;
@@ -336,5 +333,13 @@ public final class SimpleConfig implements Config {
                 ", errorTracking=" + errorTracking +
                 ", submitMetrics=" + submitMetrics +
                 '}';
+    }
+
+    private static String repeat(final char c, final int count) {
+        final StringBuilder builder = new StringBuilder(count);
+        for (int i = 0; i < count; i++) {
+            builder.append(c);
+        }
+        return builder.toString();
     }
 }

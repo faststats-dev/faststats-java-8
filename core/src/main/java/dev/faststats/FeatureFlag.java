@@ -15,7 +15,7 @@ import java.util.concurrent.CompletableFuture;
  * @param <T> the flag value type
  * @since 0.24.0
  */
-public sealed interface FeatureFlag<T> permits SimpleFeatureFlag {
+public interface FeatureFlag<T> {
     /**
      * Get the flag identifier.
      *

@@ -44,24 +44,6 @@ tasks.test {
 fun ownProperty(name: String): String? =
     if (extensions.extraProperties.has(name)) extensions.extraProperties.get(name).toString() else null
 
-tasks.withType<JavaCompile>().configureEach {
-    ownProperty("moduleName")?.let { moduleName ->
-        options.compilerArgs.addAll(listOf("--add-reads", "$moduleName=ALL-UNNAMED"))
-    }
-}
-
-tasks.withType<Test>().configureEach {
-    ownProperty("moduleName")?.let { moduleName ->
-        jvmArgs("--add-reads", "$moduleName=ALL-UNNAMED")
-    }
-}
-
-tasks.withType<JavaExec>().configureEach {
-    ownProperty("moduleName")?.let { moduleName ->
-        jvmArgs("--add-reads", "$moduleName=ALL-UNNAMED")
-    }
-}
-
 tasks.javadoc {
     val options = options as StandardJavadocDocletOptions
     options.tags(
@@ -69,9 +51,6 @@ tasks.javadoc {
         "implSpec:a:Implementation Requirements:",
         "implNote:a:Implementation Note:"
     )
-    ownProperty("moduleName")?.let { moduleName ->
-        options.addStringOption("-add-reads", "$moduleName=ALL-UNNAMED")
-    }
 }
 
 val publishingLock = gradle.sharedServices.registerIfAbsent("publishingLock", PublishingLock::class) {
@@ -92,14 +71,10 @@ afterEvaluate {
         )
     }
 
-    ownProperty("publishVersionSuffix")?.let { suffix ->
-        version = "${rootProject.version}+$suffix"
-    }
-
     extensions.configure<PublishingExtension> {
         publications.create<MavenPublication>("maven") {
             artifactId = publishArtifactId
-            groupId = "dev.faststats.metrics"
+            groupId = "dev.faststats.metrics.j8"
 
             pom {
                 url.set(
@@ -114,8 +89,7 @@ afterEvaluate {
                 }
             }
 
-            // shadow-conventions projects publish the shadowed jar along with their shadow dependencies
-            from(components[if (plugins.hasPlugin("com.gradleup.shadow")) "shadow" else "java"])
+            from(components["java"])
         }
 
         repositories {

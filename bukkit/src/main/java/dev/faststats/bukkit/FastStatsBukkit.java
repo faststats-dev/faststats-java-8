@@ -5,6 +5,8 @@ import dev.faststats.FastStatsContext;
 import dev.faststats.SimpleContext;
 import dev.faststats.config.SimpleConfig;
 import dev.faststats.internal.PlatformLoggerFactory;
+import org.bukkit.Server;
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.plugin.IllegalPluginAccessException;
 import org.bukkit.plugin.Plugin;
 import org.jetbrains.annotations.Contract;
@@ -58,10 +60,10 @@ public final class FastStatsBukkit {
      */
     @Contract(value = "_ -> new", mutates = "io")
     public static FastStatsContext.Builder builder(final Plugin plugin) {
-        final var loggerFactory = new PlatformLoggerFactory((level, throwable, message) -> {
+        final PlatformLoggerFactory loggerFactory = new PlatformLoggerFactory((level, throwable, message) -> {
             plugin.getLogger().log(level.getLevel(), message, throwable);
         });
-        final var config = SimpleConfig.read(getConfigPath(plugin), loggerFactory);
+        final SimpleConfig config = SimpleConfig.read(getConfigPath(plugin), loggerFactory);
         return new SimpleContext.Builder("bukkit")
                 .loggerFactory(loggerFactory)
                 .config(config)
@@ -113,15 +115,16 @@ public final class FastStatsBukkit {
         @SuppressWarnings({"deprecation", "Convert2MethodRef"})
         private DefaultMetrics(final Plugin plugin) {
             this.plugin = plugin;
-            final var server = plugin.getServer();
+            final Server server = plugin.getServer();
 
-            this.serverVersion = server.getVersion().split("\\(MC: |\\)", 2)[0].strip();
+            this.serverVersion = server.getVersion().split("\\(MC: |\\)", 2)[0].trim();
             this.pluginVersion = tryOrEmpty(() -> plugin.getPluginMeta().getVersion())
                     .orElseGet(() -> plugin.getDescription().getVersion());
-            this.minecraftVersion = tryOrEmpty(() -> server.getMinecraftVersion())
-                    .or(() -> tryOrEmpty(() -> server.getBukkitVersion().split("-", 2)[0]))
-                    .or(() -> tryOrEmpty(() -> server.getVersion().split("\\(MC: |\\)", 3)[1]))
-                    .orElse(serverVersion);
+            this.minecraftVersion = firstPresent(
+                    () -> tryOrEmpty(() -> server.getMinecraftVersion()),
+                    () -> tryOrEmpty(() -> server.getBukkitVersion().split("-", 2)[0]),
+                    () -> tryOrEmpty(() -> server.getVersion().split("\\(MC: |\\)", 3)[1])
+            ).orElse(serverVersion);
             this.serverType = server.getName();
         }
 
@@ -135,21 +138,22 @@ public final class FastStatsBukkit {
         }
 
         private boolean checkOnlineMode() {
-            final var server = plugin.getServer();
-            return tryOrEmpty(() -> server.getServerConfig().isProxyOnlineMode())
-                    .or(() -> tryOrEmpty(this::isProxyOnlineMode))
-                    .orElseGet(server::getOnlineMode);
+            final Server server = plugin.getServer();
+            return firstPresent(
+                    () -> tryOrEmpty(() -> server.getServerConfig().isProxyOnlineMode()),
+                    () -> tryOrEmpty(this::isProxyOnlineMode)
+            ).orElseGet(server::getOnlineMode);
         }
 
         @SuppressWarnings("removal")
         private boolean isProxyOnlineMode() {
-            final var server = plugin.getServer();
-            final var proxies = server.spigot().getPaperConfig().getConfigurationSection("proxies");
+            final Server server = plugin.getServer();
+            final ConfigurationSection proxies = server.spigot().getPaperConfig().getConfigurationSection("proxies");
             if (proxies == null) return false;
 
             if (proxies.getBoolean("velocity.enabled") && proxies.getBoolean("velocity.online-mode")) return true;
 
-            final var settings = server.spigot().getSpigotConfig().getConfigurationSection("settings");
+            final ConfigurationSection settings = server.spigot().getSpigotConfig().getConfigurationSection("settings");
             if (settings == null) return false;
 
             return settings.getBoolean("bungeecord") && proxies.getBoolean("bungee-cord.online-mode");
@@ -172,6 +176,15 @@ public final class FastStatsBukkit {
         } catch (final NoSuchMethodError | Exception e) {
             return Optional.empty();
         }
+    }
+
+    @SafeVarargs
+    private static <T> Optional<T> firstPresent(final Supplier<Optional<T>>... suppliers) {
+        for (final Supplier<Optional<T>> supplier : suppliers) {
+            final Optional<T> option = supplier.get();
+            if (option.isPresent()) return option;
+        }
+        return Optional.empty();
     }
 
     private static Path getConfigPath(final Plugin plugin) {

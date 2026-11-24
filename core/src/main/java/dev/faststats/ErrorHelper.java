@@ -4,9 +4,11 @@ import com.google.gson.JsonArray;
 import com.google.gson.JsonObject;
 import org.jspecify.annotations.Nullable;
 
+import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
@@ -20,13 +22,15 @@ final class ErrorHelper {
     public static final int MAX_FRAME_SIZE = 300;
     public static final int MAX_STACK_SIZE = 30;
 
-    private static final Set<String> allowedNames = Set.of("minecraft", "server", "root", "ubuntu");
+    private static final Set<String> allowedNames = Collections.unmodifiableSet(new HashSet<>(
+            Arrays.asList("minecraft", "server", "root", "ubuntu")
+    ));
     private static final List<Map.Entry<Pattern, String>> defaultAnonymizationEntries = defaultAnonymizationEntries();
 
     public static JsonObject compile(final TrackedError error, @Nullable final List<String> suppress,
                                      final List<Map.Entry<Pattern, String>> customPatterns,
                                      @Nullable final Attributes attributes) {
-        final var patterns = new ArrayList<>(customPatterns);
+        final List<Map.Entry<Pattern, String>> patterns = new ArrayList<>(customPatterns);
         patterns.addAll(defaultAnonymizationEntries);
         return compileAll(error, suppress, patterns, attributes);
     }
@@ -34,33 +38,33 @@ final class ErrorHelper {
     private static JsonObject compileAll(final TrackedError trackedError, @Nullable final List<String> suppress,
                                          final List<Map.Entry<Pattern, String>> customPatterns,
                                          @Nullable final Attributes defaultAttributes) {
-        final var error = trackedError.error();
-        final var report = new JsonObject();
-        final var message = anonymize(error.message(), customPatterns);
+        final TrackedError.ThrowableSnapshot error = trackedError.error();
+        final JsonObject report = new JsonObject();
+        final String message = anonymize(error.message(), customPatterns);
 
-        final var stacktrace = new JsonArray();
-        final var header = message != null
+        final JsonArray stacktrace = new JsonArray();
+        final String header = message != null
                 ? error.type().getName() + ": " + message
                 : error.type().getName();
         stacktrace.add(header);
 
-        final var elements = error.stackTraces();
-        final var stack = collapseStackTrace(elements);
-        final var list = new ArrayList<>(stack);
+        final StackTraceElement[] elements = error.stackTraces();
+        final List<String> stack = collapseStackTrace(elements);
+        final List<String> list = new ArrayList<>(stack);
         if (suppress != null) list.removeAll(suppress);
-        final var traces = Math.min(list.size(), MAX_STACK_SIZE);
+        final int traces = Math.min(list.size(), MAX_STACK_SIZE);
 
         populateTraces(traces, list, elements, stacktrace);
         appendCauseChain(error.cause(), stack, suppress, stacktrace, customPatterns);
 
         report.addProperty("error", error.type().getName());
-        final var first = anonymize(findFirstMessage(error), customPatterns);
+        final String first = anonymize(findFirstMessage(error), customPatterns);
         if (first != null) report.addProperty("message", first);
 
         report.add("stack", stacktrace);
         report.addProperty("handled", trackedError.handled());
 
-        final var attributes = new JsonObject();
+        final JsonObject attributes = new JsonObject();
         if (defaultAttributes != null) defaultAttributes.forEachPrimitive(attributes::add);
         trackedError.attributes().forEachPrimitive(attributes::add);
         if (!attributes.isEmpty()) report.add("context", attributes);
@@ -71,20 +75,20 @@ final class ErrorHelper {
     private static void appendCauseChain(TrackedError.@Nullable ThrowableSnapshot cause, final List<String> parentStack,
                                          @Nullable final List<String> suppress, final JsonArray stacktrace,
                                          final List<Map.Entry<Pattern, String>> customPatterns) {
-        final var toSuppress = new ArrayList<>(parentStack);
+        final List<String> toSuppress = new ArrayList<>(parentStack);
         if (suppress != null) toSuppress.addAll(suppress);
         while (cause != null) {
-            final var causeMessage = anonymize(cause.message(), customPatterns);
-            final var header = causeMessage != null
+            final String causeMessage = anonymize(cause.message(), customPatterns);
+            final String header = causeMessage != null
                     ? "Caused by: " + cause.type().getName() + ": " + causeMessage
                     : "Caused by: " + cause.type().getName();
             stacktrace.add(header);
 
-            final var causeElements = cause.stackTraces();
-            final var causeStack = collapseStackTrace(causeElements);
-            final var causeList = new ArrayList<>(causeStack);
+            final StackTraceElement[] causeElements = cause.stackTraces();
+            final List<String> causeStack = collapseStackTrace(causeElements);
+            final List<String> causeList = new ArrayList<>(causeStack);
             causeList.removeAll(toSuppress);
-            final var causeTraces = Math.min(causeList.size(), MAX_STACK_SIZE);
+            final int causeTraces = Math.min(causeList.size(), MAX_STACK_SIZE);
             populateTraces(causeTraces, causeList, causeElements, stacktrace);
 
             cause = cause.cause();
@@ -93,37 +97,37 @@ final class ErrorHelper {
 
     private static void populateTraces(final int traces, final List<String> list, final StackTraceElement[] elements,
                                        final JsonArray stacktrace) {
-        for (var i = 0; i < traces; i++) {
-            final var string = list.get(i);
+        for (int i = 0; i < traces; i++) {
+            final String string = list.get(i);
             if (MAX_FRAME_SIZE < 0 || string.length() <= MAX_FRAME_SIZE) stacktrace.add("  at " + string);
             else stacktrace.add("  at " + string.substring(0, MAX_FRAME_SIZE) + "...");
         }
         if (traces > 0 && traces < list.size()) {
             stacktrace.add("  ... " + (list.size() - traces) + " more");
         } else {
-            final var i = elements.length - list.size();
+            final int i = elements.length - list.size();
             if (i > 0) stacktrace.add("  ... " + i + " more");
         }
     }
 
     private static List<String> collapseStackTrace(final StackTraceElement[] trace) {
-        final var lines = Arrays.stream(trace)
+        final List<String> lines = Arrays.stream(trace)
                 .map(StackTraceElement::toString)
-                .toList();
+                .collect(java.util.stream.Collectors.toList());
 
         return collapseRepeatingPattern(lines);
     }
 
     private static List<String> collapseRepeatingPattern(final List<String> lines) {
-        final var deduplicated = collapseConsecutiveDuplicates(lines);
+        final List<String> deduplicated = collapseConsecutiveDuplicates(lines);
 
-        final var n = deduplicated.size();
+        final int n = deduplicated.size();
 
-        for (var cycleLen = 1; cycleLen <= n / 2; cycleLen++) {
-            var isPattern = true;
-            var repetitions = 0;
+        for (int cycleLen = 1; cycleLen <= n / 2; cycleLen++) {
+            boolean isPattern = true;
+            int repetitions = 0;
 
-            for (var i = 0; i < n; i++) {
+            for (int i = 0; i < n; i++) {
                 if (!deduplicated.get(i).equals(deduplicated.get(i % cycleLen))) {
                     isPattern = false;
                     break;
@@ -142,10 +146,10 @@ final class ErrorHelper {
     private static List<String> collapseConsecutiveDuplicates(final List<String> lines) {
         if (lines.isEmpty()) return lines;
 
-        final var result = new ArrayList<String>();
+        final List<String> result = new ArrayList<>();
         String previous = null;
 
-        for (final var line : lines) {
+        for (final String line : lines) {
             if (line.equals(previous)) continue;
             result.add(line);
             previous = line;
@@ -154,16 +158,59 @@ final class ErrorHelper {
         return result;
     }
 
-    private static final StackWalker STACK_WALKER = StackWalker.getInstance(StackWalker.Option.RETAIN_CLASS_REFERENCE);
+    private static final @Nullable Object STACK_WALKER = createStackWalker();
+
+    private static @Nullable Object createStackWalker() {
+        try {
+            final Class<?> walker = Class.forName("java.lang.StackWalker");
+            final Class<?> option = Class.forName("java.lang.StackWalker$Option");
+            final Object retainClassReference = option.getField("RETAIN_CLASS_REFERENCE").get(null);
+            return walker.getMethod("getInstance", option).invoke(null, retainClassReference);
+        } catch (final ReflectiveOperationException | LinkageError e) {
+            return null; // Java 8
+        }
+    }
 
     public static @Nullable ClassLoader callerClassLoader() {
-        return STACK_WALKER.walk(frames -> frames
-                        .map(StackWalker.StackFrame::getDeclaringClass)
-                        .filter(type -> type != ErrorHelper.class && type != ErrorTracker.class)
-                        .filter(type -> type.getClassLoader() != null)
-                        .findFirst())
-                .orElse(ErrorTracker.class)
-                .getClassLoader();
+        for (final Class<?> type : callerClasses()) {
+            if (type == ErrorHelper.class || type == ErrorTracker.class) continue;
+            if (type.getClassLoader() != null) return type.getClassLoader();
+        }
+        return ErrorTracker.class.getClassLoader();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static List<Class<?>> callerClasses() {
+        if (STACK_WALKER != null) try {
+            final Class<?> frameType = Class.forName("java.lang.StackWalker$StackFrame");
+            final java.lang.reflect.Method getDeclaringClass = frameType.getMethod("getDeclaringClass");
+            final java.util.function.Function<java.util.stream.Stream<?>, List<Class<?>>> collector = frames -> {
+                final List<Class<?>> classes = new ArrayList<>();
+                frames.forEach(frame -> {
+                    try {
+                        classes.add((Class<?>) getDeclaringClass.invoke(frame));
+                    } catch (final ReflectiveOperationException e) {
+                        throw new IllegalStateException(e);
+                    }
+                });
+                return classes;
+            };
+            return (List<Class<?>>) STACK_WALKER.getClass()
+                    .getMethod("walk", java.util.function.Function.class)
+                    .invoke(STACK_WALKER, collector);
+        } catch (final ReflectiveOperationException | RuntimeException e) {
+            // fall through to the Java 8 implementation
+        }
+        return Arrays.asList(ClassContext.INSTANCE.classes());
+    }
+
+    @SuppressWarnings("removal")
+    private static final class ClassContext extends SecurityManager {
+        private static final ClassContext INSTANCE = new ClassContext();
+
+        private Class<?>[] classes() {
+            return getClassContext();
+        }
     }
 
     public static boolean isSameLoader(@Nullable final Thread thread, final ClassLoader loader, final Throwable error) {
@@ -173,17 +220,17 @@ final class ErrorHelper {
     private static boolean isSameLoader(@Nullable final Thread thread, final ClassLoader loader, @Nullable final Throwable error, final Set<Throwable> visited) {
         if (error == null || !visited.add(error)) return false;
 
-        final var stackTrace = error.getStackTrace();
+        final StackTraceElement[] stackTrace = error.getStackTrace();
         if (stackTrace == null || stackTrace.length == 0)
             return isSameLoader(thread, loader, error.getCause(), visited);
 
-        final var firstNonLibraryIndex = findFirstNonLibraryFrameIndex(stackTrace);
+        final int firstNonLibraryIndex = findFirstNonLibraryFrameIndex(stackTrace);
         if (firstNonLibraryIndex == -1) return isSameLoader(thread, loader, error.getCause(), visited);
 
-        final var framesToCheck = Math.min(5, stackTrace.length - firstNonLibraryIndex);
+        final int framesToCheck = Math.min(5, stackTrace.length - firstNonLibraryIndex);
 
-        for (var i = 0; i < framesToCheck; i++) {
-            final var frame = stackTrace[firstNonLibraryIndex + i];
+        for (int i = 0; i < framesToCheck; i++) {
+            final StackTraceElement frame = stackTrace[firstNonLibraryIndex + i];
             if (isLibraryFrame(frame.getClassName())) continue;
             if (!isFromLoader(frame, loader)) return isSameLoader(thread, loader, error.getCause(), visited);
         }
@@ -193,13 +240,15 @@ final class ErrorHelper {
 
     private static boolean isRelatedContextLoader(@Nullable final ClassLoader contextLoader, final ClassLoader loader) {
         if (contextLoader == null) return true;
-        if (contextLoader == ClassLoader.getSystemClassLoader()) return true;
-        if (contextLoader == ClassLoader.getPlatformClassLoader()) return true;
+        final ClassLoader systemLoader = ClassLoader.getSystemClassLoader();
+        if (contextLoader == systemLoader) return true;
+        // the platform class loader on Java 9+, the extension class loader on Java 8
+        if (contextLoader == systemLoader.getParent()) return true;
         return isSameClassLoader(contextLoader, loader) || isSameClassLoader(loader, contextLoader);
     }
 
     private static int findFirstNonLibraryFrameIndex(final StackTraceElement[] stackTrace) {
-        for (var i = 0; i < stackTrace.length; i++) {
+        for (int i = 0; i < stackTrace.length; i++) {
             if (!isLibraryFrame(stackTrace[i].getClassName())) return i;
         }
         return -1;
@@ -215,7 +264,7 @@ final class ErrorHelper {
 
     private static boolean isFromLoader(final StackTraceElement frame, final ClassLoader loader) {
         try {
-            final var clazz = Class.forName(frame.getClassName(), false, loader);
+            final Class<?> clazz = Class.forName(frame.getClassName(), false, loader);
             return isSameClassLoader(clazz.getClassLoader(), loader);
         } catch (final Throwable t) {
             return false;
@@ -224,7 +273,7 @@ final class ErrorHelper {
 
     private static boolean isSameClassLoader(final ClassLoader classLoader, final ClassLoader loader) {
         if (classLoader == loader) return true;
-        var current = classLoader;
+        ClassLoader current = classLoader;
         while (current != null && current != loader) {
             current = current.getParent();
         }
@@ -233,32 +282,35 @@ final class ErrorHelper {
 
     private static @Nullable String findFirstMessage(final TrackedError.@Nullable ThrowableSnapshot error) {
         if (error == null) return null;
-        final var message = error.message();
+        final String message = error.message();
         if (message != null) return message;
         return findFirstMessage(error.cause());
     }
 
     private static @Nullable String anonymize(@Nullable final String message, final List<Map.Entry<Pattern, String>> customPatterns) {
         if (message == null) return null;
-        var truncated = message.length() > MAX_MESSAGE_LENGTH
+        String truncated = message.length() > MAX_MESSAGE_LENGTH
                 ? message.substring(0, MAX_MESSAGE_LENGTH) + "..."
                 : message;
-        for (final var entry : customPatterns) {
+        for (final Map.Entry<Pattern, String> entry : customPatterns) {
             truncated = entry.getKey().matcher(truncated).replaceAll(entry.getValue());
         }
         return truncated;
     }
 
     private static List<Map.Entry<Pattern, String>> defaultAnonymizationEntries() {
-        final var entries = new ArrayList<>(List.of(
-                Map.entry(ipv4Pattern(), "[IP hidden]"),
-                Map.entry(ipv6Pattern(), "[IP hidden]"),
-                Map.entry(userHomePathPattern(), "$1$2$3[username hidden]"),
-                Map.entry(discordWebhookPattern(), "$1[id hidden]/[token hidden]"),
-                Map.entry(jdbcUrlPattern(), "$1[password hidden]$2")
-        ));
-        usernamePattern().ifPresent(pattern -> entries.add(Map.entry(pattern, "[username hidden]")));
+        final List<Map.Entry<Pattern, String>> entries = new ArrayList<>();
+        entries.add(entry(ipv4Pattern(), "[IP hidden]"));
+        entries.add(entry(ipv6Pattern(), "[IP hidden]"));
+        entries.add(entry(userHomePathPattern(), "$1$2$3[username hidden]"));
+        entries.add(entry(discordWebhookPattern(), "$1[id hidden]/[token hidden]"));
+        entries.add(entry(jdbcUrlPattern(), "$1[password hidden]$2"));
+        usernamePattern().ifPresent(pattern -> entries.add(entry(pattern, "[username hidden]")));
         return entries;
+    }
+
+    private static Map.Entry<Pattern, String> entry(final Pattern pattern, final String replacement) {
+        return new AbstractMap.SimpleImmutableEntry<>(pattern, replacement);
     }
 
     private static Pattern discordWebhookPattern() {

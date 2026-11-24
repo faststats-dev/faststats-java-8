@@ -75,13 +75,13 @@ abstract class SimpleMetric<T> implements Metric<T> {
 
         @Override
         public Optional<JsonElement> getData() throws Exception {
-            final var data = callable.call();
+            final T[] data = callable.call();
             if (data == null) return Optional.empty();
 
-            final var elements = new JsonArray(data.length);
-            for (final var d : data) {
-                if (d instanceof final Boolean b) elements.add(b);
-                else if (d instanceof final Number n) elements.add(n);
+            final JsonArray elements = new JsonArray(data.length);
+            for (final T d : data) {
+                if (d instanceof Boolean) elements.add((Boolean) d);
+                else if (d instanceof Number) elements.add((Number) d);
                 else elements.add(d.toString());
             }
             return Optional.of(elements);
@@ -98,13 +98,13 @@ abstract class SimpleMetric<T> implements Metric<T> {
 
         @Override
         public Optional<JsonElement> getData() throws Exception {
-            final var data = callable.call();
+            final java.util.Map<String, ? extends T> data = callable.call();
             if (data == null) return Optional.empty();
 
-            final var object = new JsonObject();
+            final JsonObject object = new JsonObject();
             data.forEach((key, value) -> {
-                if (value instanceof final Boolean bool) object.addProperty(key, bool);
-                else if (value instanceof final Number number) object.addProperty(key, number);
+                if (value instanceof Boolean) object.addProperty(key, (Boolean) value);
+                else if (value instanceof Number) object.addProperty(key, (Number) value);
                 else object.addProperty(key, value.toString());
             });
             return Optional.of(object);
@@ -121,13 +121,13 @@ abstract class SimpleMetric<T> implements Metric<T> {
 
         @Override
         public Optional<JsonElement> getData() throws Exception {
-            final var data = callable.call();
+            final T data = callable.call();
             if (data == null) return Optional.empty();
 
-            if (data instanceof final Boolean bool)
-                return Optional.of(new JsonPrimitive(bool));
-            if (data instanceof final Number number)
-                return Optional.of(new JsonPrimitive(number));
+            if (data instanceof Boolean)
+                return Optional.of(new JsonPrimitive((Boolean) data));
+            if (data instanceof Number)
+                return Optional.of(new JsonPrimitive((Number) data));
             return Optional.of(new JsonPrimitive(data.toString()));
         }
     }

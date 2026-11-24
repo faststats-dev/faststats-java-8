@@ -17,7 +17,7 @@ import java.util.function.Function;
  *
  * @since 0.24.0
  */
-public sealed interface FastStatsContext permits SimpleContext {
+public interface FastStatsContext {
     /**
      * Get the metrics configuration shared by services created from this context.
      *
@@ -99,7 +99,7 @@ public sealed interface FastStatsContext permits SimpleContext {
      *
      * @since 0.33.0
      */
-    sealed interface ConsentBuilder extends Builder permits SimpleContext.ConsentBuilder {
+    interface ConsentBuilder extends Builder {
         /**
          * Requires the user to explicitly give consent before anything is submitted.
          * <p>
@@ -149,7 +149,7 @@ public sealed interface FastStatsContext permits SimpleContext {
      *
      * @since 0.33.0
      */
-    sealed interface Builder permits SimpleContext.Builder, ConsentBuilder {
+    interface Builder {
         /**
          * Sets the FastStats project token.
          * <p>

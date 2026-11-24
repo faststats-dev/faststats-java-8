@@ -98,25 +98,25 @@ public final class FastStatsSponge {
             final PluginContainer plugin,
             @ConfigDir(sharedRoot = true) final Path configDirectory
     ) {
-        final var loggerFactory = new PlatformLoggerFactory((level, throwable, message) -> {
+        final PlatformLoggerFactory loggerFactory = new PlatformLoggerFactory((level, throwable, message) -> {
             switch (level) {
-                case INFO -> {
+                case INFO:
                     if (throwable == null) plugin.logger().info(message);
                     else plugin.logger().info(message, throwable);
-                }
-                case ERROR -> {
+                    break;
+                case ERROR:
                     if (throwable == null) plugin.logger().error(message);
                     else plugin.logger().error(message, throwable);
-                }
-                case WARN -> {
+                    break;
+                case WARN:
                     if (throwable == null) plugin.logger().warn(message);
                     else plugin.logger().warn(message, throwable);
-                }
+                    break;
             }
         });
-        final var config = SpongeConfig.read(plugin, configDirectory
+        final SpongeConfig config = SpongeConfig.read(plugin, configDirectory
                 .resolve("faststats").resolve("config.properties"), loggerFactory);
-        final var id = plugin.metadata().id();
+        final String id = plugin.metadata().id();
         return new SimpleContext.Builder("sponge")
                 .loggerFactory(loggerFactory)
                 .config(config)
@@ -129,7 +129,7 @@ public final class FastStatsSponge {
                         .execute(task)
                         .build())::cancel)
                 .defaultMetrics((context, metrics) -> {
-                    final var implementation = Sponge.platform().container(Platform.Component.IMPLEMENTATION);
+                    final PluginContainer implementation = Sponge.platform().container(Platform.Component.IMPLEMENTATION);
                     metrics.addProperty("game_version", Sponge.platform().minecraftVersion().name());
                     metrics.addProperty("online_mode", Sponge.server().isOnlineModeEnabled());
                     metrics.addProperty("platform_version", implementation.metadata().version().toString()); // todo: double check
@@ -145,7 +145,7 @@ public final class FastStatsSponge {
     private static ClassLoader classLoader(final PluginContainer plugin) {
         try {
             // the instance is not available yet while the plugin is being constructed
-            final var instance = plugin.instance();
+            final Object instance = plugin.instance();
             if (instance != null) return instance.getClass().getClassLoader();
         } catch (final RuntimeException ignored) {
         }

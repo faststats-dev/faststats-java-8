@@ -5,7 +5,7 @@ import org.jspecify.annotations.Nullable;
 
 import java.util.logging.Level;
 
-public sealed interface Logger permits PlatformLoggerFactory.PlatformLogger {
+public interface Logger {
     default void error(@PrintFormat final String message, @Nullable final Throwable t, final Object... args) {
         debug(LogLevel.ERROR, message, t, args);
     }
@@ -19,7 +19,7 @@ public sealed interface Logger permits PlatformLoggerFactory.PlatformLogger {
     }
 
     default void debug(final LogLevel level, @PrintFormat final String message, @Nullable final Throwable t, final Object... args) {
-        if (factory().isDebug()) print(level, t, "[" + caller() + "] " + message.formatted(args));
+        if (factory().isDebug()) print(level, t, "[" + caller() + "] " + String.format(message, args));
     }
 
     String caller();

@@ -14,7 +14,7 @@ import java.util.regex.Pattern;
  *
  * @since 0.24.0
  */
-public sealed interface ErrorTracker permits SimpleErrorTracker {
+public interface ErrorTracker {
     /**
      * Creates a context-aware error tracker policy for the class loader of the calling class.
      *
@@ -41,7 +41,7 @@ public sealed interface ErrorTracker permits SimpleErrorTracker {
      */
     @Contract(value = "_ -> new")
     static ErrorTracker contextAware(@Nullable final ClassLoader classLoader) {
-        final var tracker = new SimpleErrorTracker();
+        final SimpleErrorTracker tracker = new SimpleErrorTracker();
         tracker.attachErrorContext(classLoader);
         return tracker;
     }
